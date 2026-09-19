@@ -1,0 +1,143 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String
+  name         String
+  /// ADMIN | TEACHER | STUDENT | PARENT
+  role         String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  studentProfile StudentProfile?
+  teacherProfile TeacherProfile?
+  parentLinks    ParentStudent[] @relation("ParentUser")
+}
+
+model StudentProfile {
+  id        String @id @default(cuid())
+  userId    String @unique
+  studentId String @unique
+  user      User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  enrollments Enrollment[]
+  parentLinks ParentStudent[]
+  attendance  AttendanceRecord[]
+  grades      Grade[]
+}
+
+model TeacherProfile {
+  id     String @id @default(cuid())
+  userId String @unique
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  classSubjects ClassSubject[]
+}
+
+model ParentStudent {
+  id        String @id @default(cuid())
+  parentId  String
+  studentId String
+  parent    User           @relation("ParentUser", fields: [parentId], references: [id], onDelete: Cascade)
+  student   StudentProfile @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@unique([parentId, studentId])
+}
+
+model AcademicYear {
+  id       String  @id @default(cuid())
+  name     String  @unique
+  isActive Boolean @default(true)
+  classes  Class[]
+}
+
+model Class {
+  id             String @id @default(cuid())
+  name           String
+  section        String
+  academicYearId String
+  academicYear   AcademicYear @relation(fields: [academicYearId], references: [id], onDelete: Cascade)
+
+  enrollments   Enrollment[]
+  classSubjects ClassSubject[]
+  attendance    AttendanceRecord[]
+  assignments   Assignment[]
+
+  @@unique([name, section, academicYearId])
+}
+
+model Subject {
+  id            String         @id @default(cuid())
+  name          String         @unique
+  classSubjects ClassSubject[]
+  assignments   Assignment[]
+}
+
+model ClassSubject {
+  id               String @id @default(cuid())
+  classId          String
+  subjectId        String
+  teacherProfileId String
+  class            Class          @relation(fields: [classId], references: [id], onDelete: Cascade)
+  subject          Subject        @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  teacher          TeacherProfile @relation(fields: [teacherProfileId], references: [id], onDelete: Cascade)
+
+  @@unique([classId, subjectId])
+}
+
+model Enrollment {
+  id               String   @id @default(cuid())
+  studentProfileId String
+  classId          String
+  enrolledAt       DateTime @default(now())
+  student          StudentProfile @relation(fields: [studentProfileId], references: [id], onDelete: Cascade)
+  class            Class          @relation(fields: [classId], references: [id], onDelete: Cascade)
+
+  @@unique([studentProfileId, classId])
+}
+
+model AttendanceRecord {
+  id               String   @id @default(cuid())
+  studentProfileId String
+  classId          String
+  date             DateTime
+  /// PRESENT | ABSENT | LATE | EXCUSED
+  status           String
+  markedById       String
+  student          StudentProfile @relation(fields: [studentProfileId], references: [id], onDelete: Cascade)
+  class            Class          @relation(fields: [classId], references: [id], onDelete: Cascade)
+
+  @@unique([studentProfileId, classId, date])
+}
+
+model Assignment {
+  id        String    @id @default(cuid())
+  title     String
+  classId   String
+  subjectId String
+  maxScore  Float
+  dueDate   DateTime?
+  createdAt DateTime  @default(now())
+  class     Class     @relation(fields: [classId], references: [id], onDelete: Cascade)
+  subject   Subject   @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  grades    Grade[]
+}
+
+model Grade {
+  id               String         @id @default(cuid())
+  assignmentId     String
+  studentProfileId String
+  score            Float
+  assignment       Assignment     @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+  student          StudentProfile @relation(fields: [studentProfileId], references: [id], onDelete: Cascade)
+
+  @@unique([assignmentId, studentProfileId])
+}

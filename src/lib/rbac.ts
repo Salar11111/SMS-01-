@@ -1,4 +1,5 @@
-export type AppRole = "ADMIN" | "TEACHER" | "STUDENT" | "PARENT";
+export const APP_ROLES = ["ADMIN", "TEACHER", "STUDENT", "PARENT"] as const;
+export type AppRole = (typeof APP_ROLES)[number];
 
 export const ROLE_HOME: Record<AppRole, string> = {
   ADMIN: "/admin",

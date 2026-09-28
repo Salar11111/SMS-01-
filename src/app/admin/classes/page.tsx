@@ -55,11 +55,11 @@ export default async function AdminClassesPage() {
           <Field label="Class name" name="name" required defaultValue="Grade 10" />
           <Field label="Section" name="section" required defaultValue="B" />
           <label className="block text-sm">
-            <span className="mb-1 block font-medium text-[var(--ink)]">Academic year</span>
+            <span className="mb-1 block font-medium text-[var(--color-ink)]">Academic year</span>
             <select
               name="academicYearId"
               required
-              className="w-full rounded-md border border-[var(--line)] bg-white px-3 py-2"
+              className="w-full rounded-md border border-[var(--color-line)] bg-[var(--color-panel)] px-3 py-2"
             >
               {years.map((y) => (
                 <option key={y.id} value={y.id}>
@@ -77,11 +77,11 @@ export default async function AdminClassesPage() {
       <Panel title="Assign teacher to class subject">
         <form action={assignTeacherToClass} className="grid gap-3 sm:grid-cols-4">
           <label className="block text-sm">
-            <span className="mb-1 block font-medium text-[var(--ink)]">Class</span>
+            <span className="mb-1 block font-medium text-[var(--color-ink)]">Class</span>
             <select
               name="classId"
               required
-              className="w-full rounded-md border border-[var(--line)] bg-white px-3 py-2"
+              className="w-full rounded-md border border-[var(--color-line)] bg-[var(--color-panel)] px-3 py-2"
             >
               {classes.map((c) => (
                 <option key={c.id} value={c.id}>
@@ -91,11 +91,11 @@ export default async function AdminClassesPage() {
             </select>
           </label>
           <label className="block text-sm">
-            <span className="mb-1 block font-medium text-[var(--ink)]">Subject</span>
+            <span className="mb-1 block font-medium text-[var(--color-ink)]">Subject</span>
             <select
               name="subjectId"
               required
-              className="w-full rounded-md border border-[var(--line)] bg-white px-3 py-2"
+              className="w-full rounded-md border border-[var(--color-line)] bg-[var(--color-panel)] px-3 py-2"
             >
               {subjects.map((s) => (
                 <option key={s.id} value={s.id}>
@@ -105,11 +105,11 @@ export default async function AdminClassesPage() {
             </select>
           </label>
           <label className="block text-sm">
-            <span className="mb-1 block font-medium text-[var(--ink)]">Teacher</span>
+            <span className="mb-1 block font-medium text-[var(--color-ink)]">Teacher</span>
             <select
               name="teacherProfileId"
               required
-              className="w-full rounded-md border border-[var(--line)] bg-white px-3 py-2"
+              className="w-full rounded-md border border-[var(--color-line)] bg-[var(--color-panel)] px-3 py-2"
             >
               {teachers.map((t) => (
                 <option key={t.id} value={t.id}>

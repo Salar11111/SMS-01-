@@ -45,3 +45,20 @@ next-env.d.ts
 # sqlite
 *.db
 *.db-journal
+
+# editor
+.vscode/
+.idea/
+
+# worktrees
+.kilo/
+
+# playwright
+/test-results/
+/playwright-report/
+/blob-report/
+/playwright/.cache/
+
+# env
+*.local
+

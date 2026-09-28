@@ -6,7 +6,14 @@ import { formatRole, type AppRole } from "@/lib/rbac";
 export default async function AdminUsersPage() {
   const users = await prisma.user.findMany({
     orderBy: { createdAt: "desc" },
-    include: { studentProfile: true, teacherProfile: true },
+    select: {
+      id: true,
+      name: true,
+      email: true,
+      role: true,
+      studentProfile: { select: { studentId: true } },
+      teacherProfile: { select: { id: true } },
+    },
   });
 
   return (
@@ -17,13 +24,13 @@ export default async function AdminUsersPage() {
         <form action={createUser} className="grid gap-3 sm:grid-cols-2">
           <Field label="Full name" name="name" required />
           <Field label="Email" name="email" type="email" required />
-          <Field label="Password" name="password" type="password" required defaultValue="password123" />
+          <Field label="Password" name="password" type="password" required />
           <label className="block text-sm">
-            <span className="mb-1 block font-medium text-[var(--ink)]">Role</span>
+            <span className="mb-1 block font-medium text-[var(--color-ink)]">Role</span>
             <select
               name="role"
               required
-              className="w-full rounded-md border border-[var(--line)] bg-white px-3 py-2"
+              className="w-full rounded-md border border-[var(--color-line)] bg-[var(--color-panel)] px-3 py-2"
             >
               <option value="ADMIN">Admin</option>
               <option value="TEACHER">Teacher</option>

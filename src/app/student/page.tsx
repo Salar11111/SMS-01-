@@ -1,10 +1,13 @@
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { PageHeader, Panel, DataTable, Stat, EmptyState } from "@/components/ui";
+import { PageHeader, Panel, DataTable, Stat, EmptyState, SectionLabel, Badge } from "@/components/ui";
 import { classLabel } from "@/lib/utils";
+import { CalendarCheck, ClipboardList, GraduationCap, Award } from "lucide-react";
 
 export default async function StudentHomePage() {
   const session = await auth();
+  const firstName = session?.user?.name?.split(" ")[0] || "Student";
+
   const profile = await prisma.studentProfile.findUnique({
     where: { userId: session!.user.id },
     include: {
@@ -26,18 +29,53 @@ export default async function StudentHomePage() {
       ? "—"
       : `${Math.round((present / profile.attendance.length) * 100)}%`;
 
+  const avgScore =
+    profile.grades.length === 0
+      ? "—"
+      : `${Math.round(
+          (profile.grades.reduce((sum, g) => sum + g.score, 0) /
+            profile.grades.length) *
+            100,
+        )}%`;
+
   return (
-    <div className="space-y-6">
+    <div>
       <PageHeader
-        title={`Hello, ${session!.user.name}`}
+        title={`Hello, ${firstName}`}
         description={`Student ID: ${profile.studentId}`}
       />
-      <div className="grid gap-4 sm:grid-cols-3">
-        <Stat label="Enrolled classes" value={profile.enrollments.length} />
-        <Stat label="Attendance rate" value={rate} />
-        <Stat label="Grade entries" value={profile.grades.length} />
+
+      <div className="mb-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <Stat
+          label="Enrolled Classes"
+          value={profile.enrollments.length}
+          icon={<GraduationCap className="h-5 w-5" />}
+        />
+        <Stat
+          label="Attendance Rate"
+          value={rate}
+          icon={<CalendarCheck className="h-5 w-5" />}
+          trend={profile.attendance.length > 0 ? "up" : "neutral"}
+          trendLabel={rate}
+        />
+        <Stat
+          label="Grade Entries"
+          value={profile.grades.length}
+          icon={<ClipboardList className="h-5 w-5" />}
+        />
+        <Stat
+          label="Average Score"
+          value={avgScore}
+          icon={<Award className="h-5 w-5" />}
+        />
       </div>
-      <Panel title="My classes">
+
+      <SectionLabel>My classes</SectionLabel>
+      <Panel>
+        <div className="mb-4 flex flex-wrap gap-3">
+          <Badge variant="primary">{profile.enrollments.length} Enrolled</Badge>
+          <Badge variant="success">{rate} Attendance</Badge>
+        </div>
         <DataTable
           headers={["Class", "Year"]}
           rows={profile.enrollments.map((e) => [

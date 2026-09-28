@@ -1,139 +1,173 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { requireTeacherProfile, assertTeacherOwnsClass, assertTeacherOwnsAssignment } from "@/lib/authz";
 import { startOfDay } from "@/lib/utils";
+import { parseFormData } from "@/lib/validation";
+import { createAssignmentSchema, saveAttendanceSchema, saveGradesSchema } from "@/lib/schemas";
 
-async function requireTeacher() {
-  const session = await auth();
-  if (!session?.user || session.user.role !== "TEACHER") {
-    throw new Error("Unauthorized");
+function statusEntries(formData: FormData): Record<string, string> {
+  const entries: Record<string, string> = {};
+  for (const [key, value] of formData.entries()) {
+    if (key.startsWith("status_")) entries[key] = String(value);
   }
-  const teacher = await prisma.teacherProfile.findUnique({
-    where: { userId: session.user.id },
-  });
-  if (!teacher) throw new Error("Teacher profile missing");
-  return { session, teacher };
+  return entries;
 }
 
-async function assertTeacherOwnsClass(teacherProfileId: string, classId: string) {
-  const link = await prisma.classSubject.findFirst({
-    where: { teacherProfileId, classId },
-  });
-  if (!link) throw new Error("Not assigned to this class");
-  return link;
+function scoreEntries(formData: FormData): Record<string, string> {
+  const entries: Record<string, string> = {};
+  for (const [key, value] of formData.entries()) {
+    if (key.startsWith("score_")) entries[key] = String(value).trim();
+  }
+  return entries;
 }
 
 export async function saveAttendance(formData: FormData) {
-  const { session, teacher } = await requireTeacher();
-  const classId = String(formData.get("classId") || "");
-  const dateStr = String(formData.get("date") || "");
-  if (!classId || !dateStr) throw new Error("Missing fields");
-
-  await assertTeacherOwnsClass(teacher.id, classId);
-  const date = startOfDay(new Date(dateStr));
-
-  const enrollments = await prisma.enrollment.findMany({
-    where: { classId },
-    select: { studentProfileId: true },
+  const { session, teacher } = await requireTeacherProfile();
+  const parsed = parseFormData(saveAttendanceSchema, {
+    classId: formData.get("classId"),
+    date: formData.get("date"),
+    statuses: statusEntries(formData),
   });
 
-  for (const e of enrollments) {
-    const status = String(formData.get(`status_${e.studentProfileId}`) || "PRESENT");
-    await prisma.attendanceRecord.upsert({
-      where: {
-        studentProfileId_classId_date: {
-          studentProfileId: e.studentProfileId,
-          classId,
-          date,
-        },
-      },
-      create: {
-        studentProfileId: e.studentProfileId,
-        classId,
-        date,
-        status,
-        markedById: session.user.id,
-      },
-      update: {
-        status,
-        markedById: session.user.id,
-      },
-    });
+  await assertTeacherOwnsClass(teacher.id, parsed.classId);
+  const date = startOfDay(parsed.date);
+
+  const enrollments = await prisma.enrollment.findMany({
+    where: { classId: parsed.classId },
+    select: { studentProfileId: true },
+  });
+  if (enrollments.length === 0) {
+    revalidatePath(`/teacher/attendance/${parsed.classId}`);
+    return;
   }
 
-  revalidatePath(`/teacher/attendance/${classId}`);
+  const existing = await prisma.attendanceRecord.findMany({
+    where: {
+      classId: parsed.classId,
+      date,
+      studentProfileId: { in: enrollments.map((e) => e.studentProfileId) },
+    },
+    select: { studentProfileId: true },
+  });
+  const existingIds = new Set(existing.map((r) => r.studentProfileId));
+
+  const statusOf = (studentProfileId: string) =>
+    parsed.statuses[`status_${studentProfileId}`] ?? "PRESENT";
+
+  const toCreate = enrollments
+    .filter((e) => !existingIds.has(e.studentProfileId))
+    .map((e) => ({
+      studentProfileId: e.studentProfileId,
+      classId: parsed.classId,
+      date,
+      status: statusOf(e.studentProfileId),
+      markedById: session.user.id,
+    }));
+
+  await prisma.$transaction(async (tx) => {
+    if (toCreate.length > 0) await tx.attendanceRecord.createMany({ data: toCreate });
+    await Promise.all(
+      enrollments
+        .filter((e) => existingIds.has(e.studentProfileId))
+        .map((e) =>
+          tx.attendanceRecord.updateMany({
+            where: {
+              studentProfileId: e.studentProfileId,
+              classId: parsed.classId,
+              date,
+            },
+            data: { status: statusOf(e.studentProfileId), markedById: session.user.id },
+          }),
+        ),
+    );
+  });
+
+  revalidatePath(`/teacher/attendance/${parsed.classId}`);
   revalidatePath("/teacher");
 }
 
 export async function createAssignment(formData: FormData) {
-  const { teacher } = await requireTeacher();
-  const classId = String(formData.get("classId") || "");
-  const subjectId = String(formData.get("subjectId") || "");
-  const title = String(formData.get("title") || "").trim();
-  const maxScore = Number(formData.get("maxScore") || 100);
-  const dueDateRaw = String(formData.get("dueDate") || "");
-
-  if (!classId || !subjectId || !title) throw new Error("Missing fields");
+  const { teacher } = await requireTeacherProfile();
+  const parsed = parseFormData(createAssignmentSchema, Object.fromEntries(formData));
 
   const link = await prisma.classSubject.findFirst({
-    where: { teacherProfileId: teacher.id, classId, subjectId },
+    where: { teacherProfileId: teacher.id, classId: parsed.classId, subjectId: parsed.subjectId },
   });
   if (!link) throw new Error("Not assigned to this class/subject");
 
   await prisma.assignment.create({
     data: {
-      title,
-      classId,
-      subjectId,
-      maxScore,
-      dueDate: dueDateRaw ? new Date(dueDateRaw) : null,
+      title: parsed.title,
+      classId: parsed.classId,
+      subjectId: parsed.subjectId,
+      maxScore: parsed.maxScore,
+      dueDate: parsed.dueDate ?? null,
     },
   });
 
   revalidatePath("/teacher/grades");
-  revalidatePath(`/teacher/grades/${classId}`);
+  revalidatePath(`/teacher/grades/${parsed.classId}`);
 }
 
 export async function saveGrades(formData: FormData) {
-  const { teacher } = await requireTeacher();
-  const assignmentId = String(formData.get("assignmentId") || "");
-  if (!assignmentId) throw new Error("Missing assignment");
-
-  const assignment = await prisma.assignment.findUnique({
-    where: { id: assignmentId },
+  const { teacher } = await requireTeacherProfile();
+  const parsed = parseFormData(saveGradesSchema, {
+    assignmentId: formData.get("assignmentId"),
+    scores: scoreEntries(formData),
   });
-  if (!assignment) throw new Error("Assignment not found");
 
-  await assertTeacherOwnsClass(teacher.id, assignment.classId);
+  const assignment = await assertTeacherOwnsAssignment(teacher.id, parsed.assignmentId);
 
   const enrollments = await prisma.enrollment.findMany({
     where: { classId: assignment.classId },
     select: { studentProfileId: true },
   });
 
-  for (const e of enrollments) {
-    const raw = formData.get(`score_${e.studentProfileId}`);
-    if (raw === null || String(raw).trim() === "") continue;
-    const score = Number(raw);
-    if (Number.isNaN(score)) continue;
+  const existing = await prisma.grade.findMany({
+    where: {
+      assignmentId: assignment.id,
+      studentProfileId: { in: enrollments.map((e) => e.studentProfileId) },
+    },
+    select: { studentProfileId: true },
+  });
+  const existingIds = new Set(existing.map((g) => g.studentProfileId));
 
-    await prisma.grade.upsert({
-      where: {
-        assignmentId_studentProfileId: {
-          assignmentId,
-          studentProfileId: e.studentProfileId,
-        },
-      },
-      create: {
-        assignmentId,
-        studentProfileId: e.studentProfileId,
-        score,
-      },
-      update: { score },
+  const scores = enrollments
+    .map((e) => ({ studentProfileId: e.studentProfileId, raw: parsed.scores[`score_${e.studentProfileId}`] }))
+    .filter((s): s is { studentProfileId: string; raw: string } => Boolean(s.raw));
+
+  const toCreate = scores
+    .filter((s) => !existingIds.has(s.studentProfileId))
+    .map((s) => {
+      const score = Number(s.raw);
+      if (score < 0 || score > assignment.maxScore) {
+        throw new Error(`Score out of range (0–${assignment.maxScore})`);
+      }
+      return { assignmentId: assignment.id, studentProfileId: s.studentProfileId, score };
     });
-  }
+
+  await prisma.$transaction(async (tx) => {
+    if (toCreate.length > 0) await tx.grade.createMany({ data: toCreate });
+    await Promise.all(
+      scores
+        .filter((s) => existingIds.has(s.studentProfileId))
+        .map((s) => {
+          const score = Number(s.raw);
+          if (score < 0 || score > assignment.maxScore) {
+            throw new Error(`Score out of range (0–${assignment.maxScore})`);
+          }
+          return tx.grade.updateMany({
+            where: {
+              assignmentId: assignment.id,
+              studentProfileId: s.studentProfileId,
+            },
+            data: { score },
+          });
+        }),
+    );
+  });
 
   revalidatePath(`/teacher/grades/${assignment.classId}`);
   revalidatePath("/teacher/grades");

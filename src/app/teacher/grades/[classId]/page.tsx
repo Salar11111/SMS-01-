@@ -24,23 +24,24 @@ export default async function TeacherGradebookPage({
   if (subjects.length === 0) notFound();
 
   const klass = subjects[0].class;
-  const enrollments = await prisma.enrollment.findMany({
-    where: { classId },
-    include: { student: { include: { user: true } } },
-    orderBy: { student: { user: { name: "asc" } } },
-  });
-
-  const assignments = await prisma.assignment.findMany({
-    where: {
-      classId,
-      subjectId: { in: subjects.map((s) => s.subjectId) },
-    },
-    include: {
-      subject: true,
-      grades: true,
-    },
-    orderBy: { createdAt: "desc" },
-  });
+  const [enrollments, assignments] = await Promise.all([
+    prisma.enrollment.findMany({
+      where: { classId },
+      include: { student: { include: { user: true } } },
+      orderBy: { student: { user: { name: "asc" } } },
+    }),
+    prisma.assignment.findMany({
+      where: {
+        classId,
+        subjectId: { in: subjects.map((s) => s.subjectId) },
+      },
+      include: {
+        subject: true,
+        grades: true,
+      },
+      orderBy: { createdAt: "desc" },
+    }),
+  ]);
 
   return (
     <div className="space-y-6">
@@ -58,7 +59,7 @@ export default async function TeacherGradebookPage({
             <select
               name="subjectId"
               required
-              className="w-full rounded-md border border-[var(--line)] bg-white px-3 py-2"
+              className="w-full rounded-md border border-[var(--color-line)] bg-[var(--color-panel)] px-3 py-2"
             >
               {subjects.map((s) => (
                 <option key={s.subjectId} value={s.subjectId}>
@@ -81,7 +82,7 @@ export default async function TeacherGradebookPage({
           title={`${a.title} · ${a.subject.name} (max ${a.maxScore})`}
           action={
             a.dueDate ? (
-              <span className="text-sm text-[var(--muted)]">Due {formatDate(a.dueDate)}</span>
+              <span className="text-sm text-[var(--color-muted)]">Due {formatDate(a.dueDate)}</span>
             ) : null
           }
         >
@@ -90,7 +91,7 @@ export default async function TeacherGradebookPage({
             <div className="overflow-x-auto">
               <table className="w-full text-left text-sm">
                 <thead>
-                  <tr className="border-b border-[var(--line)] text-[var(--muted)]">
+                  <tr className="border-b border-[var(--color-line)] text-[var(--color-muted)]">
                     <th className="pb-2">Student</th>
                     <th className="pb-2">Score</th>
                   </tr>
@@ -99,7 +100,7 @@ export default async function TeacherGradebookPage({
                   {enrollments.map((e) => {
                     const existing = a.grades.find((g) => g.studentProfileId === e.studentProfileId);
                     return (
-                      <tr key={e.id} className="border-b border-[var(--line)]/70">
+                      <tr key={e.id} className="border-b border-[var(--color-line)]/70">
                         <td className="py-2">{e.student.user.name}</td>
                         <td className="py-2">
                           <input
@@ -107,7 +108,7 @@ export default async function TeacherGradebookPage({
                             step="0.01"
                             name={`score_${e.studentProfileId}`}
                             defaultValue={existing?.score ?? ""}
-                            className="w-28 rounded-md border border-[var(--line)] bg-white px-2 py-1"
+                            className="w-28 rounded-md border border-[var(--color-line)] bg-[var(--color-panel)] px-2 py-1"
                           />
                         </td>
                       </tr>

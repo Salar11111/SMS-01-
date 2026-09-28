@@ -9,22 +9,6 @@ export const authConfig = {
   session: { strategy: "jwt" },
   providers: [],
   callbacks: {
-    authorized({ auth, request }) {
-      const { pathname } = request.nextUrl;
-      const isLoggedIn = !!auth?.user;
-      const role = auth?.user?.role as SessionRole | undefined;
-
-      const isAuthPage = pathname.startsWith("/login");
-      const isProtected =
-        pathname.startsWith("/admin") ||
-        pathname.startsWith("/teacher") ||
-        pathname.startsWith("/student") ||
-        pathname.startsWith("/parent");
-
-      if (isAuthPage) return true;
-      if (isProtected) return isLoggedIn && !!role;
-      return true;
-    },
     async jwt({ token, user }) {
       if (user) {
         token.id = user.id!;

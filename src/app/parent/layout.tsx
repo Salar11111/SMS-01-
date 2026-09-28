@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
-import { DashboardShell } from "@/components/dashboard-shell";
+import { DashboardShell } from "@/components/ui";
 
 const nav = [
   { href: "/parent", label: "Children" },

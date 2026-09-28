@@ -1,9 +1,11 @@
 import { PrismaClient } from "@prisma/client";
 import bcrypt from "bcryptjs";
+import { startOfDay } from "../src/lib/utils";
 
 const prisma = new PrismaClient();
 
 async function main() {
+  await prisma.loginAttempt.deleteMany();
   await prisma.grade.deleteMany();
   await prisma.assignment.deleteMany();
   await prisma.attendanceRecord.deleteMany();
@@ -17,7 +19,7 @@ async function main() {
   await prisma.academicYear.deleteMany();
   await prisma.user.deleteMany();
 
-  const passwordHash = await bcrypt.hash("password123", 10);
+  const passwordHash = await bcrypt.hash("password123", 12);
 
   const admin = await prisma.user.create({
     data: {
@@ -111,8 +113,7 @@ async function main() {
     },
   });
 
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
+  const today = startOfDay();
 
   await prisma.attendanceRecord.create({
     data: {

@@ -5,7 +5,7 @@ import { ROLE_HOME, canAccessRolePath, type AppRole } from "@/lib/rbac";
 
 const { auth } = NextAuth(authConfig);
 
-export default auth((req) => {
+export const proxy = auth((req) => {
   const { pathname } = req.nextUrl;
   const isLoggedIn = !!req.auth;
   const role = req.auth?.user?.role as AppRole | undefined;

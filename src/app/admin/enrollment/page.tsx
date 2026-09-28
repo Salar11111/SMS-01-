@@ -34,11 +34,11 @@ export default async function AdminEnrollmentPage() {
         <Panel title="Enroll student">
           <form action={enrollStudent} className="space-y-3">
             <label className="block text-sm">
-              <span className="mb-1 block font-medium text-[var(--ink)]">Student</span>
+              <span className="mb-1 block font-medium text-[var(--color-ink)]">Student</span>
               <select
                 name="studentProfileId"
                 required
-                className="w-full rounded-md border border-[var(--line)] bg-white px-3 py-2"
+                className="w-full rounded-md border border-[var(--color-line)] bg-[var(--color-panel)] px-3 py-2"
               >
                 {students.map((s) => (
                   <option key={s.id} value={s.id}>
@@ -48,11 +48,11 @@ export default async function AdminEnrollmentPage() {
               </select>
             </label>
             <label className="block text-sm">
-              <span className="mb-1 block font-medium text-[var(--ink)]">Class</span>
+              <span className="mb-1 block font-medium text-[var(--color-ink)]">Class</span>
               <select
                 name="classId"
                 required
-                className="w-full rounded-md border border-[var(--line)] bg-white px-3 py-2"
+                className="w-full rounded-md border border-[var(--color-line)] bg-[var(--color-panel)] px-3 py-2"
               >
                 {classes.map((c) => (
                   <option key={c.id} value={c.id}>
@@ -68,11 +68,11 @@ export default async function AdminEnrollmentPage() {
         <Panel title="Link parent to student">
           <form action={linkParentStudent} className="space-y-3">
             <label className="block text-sm">
-              <span className="mb-1 block font-medium text-[var(--ink)]">Parent</span>
+              <span className="mb-1 block font-medium text-[var(--color-ink)]">Parent</span>
               <select
                 name="parentId"
                 required
-                className="w-full rounded-md border border-[var(--line)] bg-white px-3 py-2"
+                className="w-full rounded-md border border-[var(--color-line)] bg-[var(--color-panel)] px-3 py-2"
               >
                 {parents.map((p) => (
                   <option key={p.id} value={p.id}>
@@ -82,11 +82,11 @@ export default async function AdminEnrollmentPage() {
               </select>
             </label>
             <label className="block text-sm">
-              <span className="mb-1 block font-medium text-[var(--ink)]">Student</span>
+              <span className="mb-1 block font-medium text-[var(--color-ink)]">Student</span>
               <select
                 name="studentId"
                 required
-                className="w-full rounded-md border border-[var(--line)] bg-white px-3 py-2"
+                className="w-full rounded-md border border-[var(--color-line)] bg-[var(--color-panel)] px-3 py-2"
               >
                 {students.map((s) => (
                   <option key={s.id} value={s.id}>

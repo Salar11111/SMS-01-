@@ -17,9 +17,10 @@ model User {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
-  studentProfile StudentProfile?
-  teacherProfile TeacherProfile?
-  parentLinks    ParentStudent[] @relation("ParentUser")
+  studentProfile    StudentProfile?
+  teacherProfile    TeacherProfile?
+  parentLinks       ParentStudent[] @relation("ParentUser")
+  markedAttendance AttendanceRecord[]
 }
 
 model StudentProfile {
@@ -50,6 +51,7 @@ model ParentStudent {
   student   StudentProfile @relation(fields: [studentId], references: [id], onDelete: Cascade)
 
   @@unique([parentId, studentId])
+  @@index([studentId])
 }
 
 model AcademicYear {
@@ -102,20 +104,24 @@ model Enrollment {
   class            Class          @relation(fields: [classId], references: [id], onDelete: Cascade)
 
   @@unique([studentProfileId, classId])
+  @@index([classId])
 }
 
 model AttendanceRecord {
-  id               String   @id @default(cuid())
+  id               String           @id @default(cuid())
   studentProfileId String
   classId          String
   date             DateTime
   /// PRESENT | ABSENT | LATE | EXCUSED
   status           String
   markedById       String
-  student          StudentProfile @relation(fields: [studentProfileId], references: [id], onDelete: Cascade)
-  class            Class          @relation(fields: [classId], references: [id], onDelete: Cascade)
+  student          StudentProfile   @relation(fields: [studentProfileId], references: [id], onDelete: Cascade)
+  class            Class            @relation(fields: [classId], references: [id], onDelete: Cascade)
+  markedBy         User             @relation(fields: [markedById], references: [id], onDelete: Restrict)
 
   @@unique([studentProfileId, classId, date])
+  @@index([classId, date])
+  @@index([studentProfileId])
 }
 
 model Assignment {
@@ -140,4 +146,15 @@ model Grade {
   student          StudentProfile @relation(fields: [studentProfileId], references: [id], onDelete: Cascade)
 
   @@unique([assignmentId, studentProfileId])
+
+  @@index([assignmentId])
+  @@index([studentProfileId])
+}
+
+model LoginAttempt {
+  id        String    @id @default(cuid())
+  key       String    @unique
+  attempts  Int       @default(0)
+  lockedAt  DateTime?
+  updatedAt DateTime  @updatedAt
 }

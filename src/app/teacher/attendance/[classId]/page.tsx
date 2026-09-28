@@ -3,7 +3,7 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { saveAttendance } from "@/lib/actions/teacher";
 import { PageHeader, Panel, SubmitButton } from "@/components/ui";
-import { classLabel, startOfDay, formatDate } from "@/lib/utils";
+import { classLabel, startOfDay, dateInputValue, formatDate } from "@/lib/utils";
 
 export default async function TeacherAttendanceClassPage({
   params,
@@ -41,7 +41,7 @@ export default async function TeacherAttendanceClassPage({
     orderBy: { student: { user: { name: "asc" } } },
   });
 
-  const dateValue = today.toISOString().slice(0, 10);
+  const dateValue = dateInputValue(today);
 
   return (
     <div className="space-y-6">
@@ -58,13 +58,13 @@ export default async function TeacherAttendanceClassPage({
               type="date"
               name="date"
               defaultValue={dateValue}
-              className="rounded-md border border-[var(--line)] bg-white px-3 py-2"
+              className="rounded-md border border-[var(--color-line)] bg-[var(--color-panel)] px-3 py-2"
             />
           </label>
           <div className="overflow-x-auto">
             <table className="w-full text-left text-sm">
               <thead>
-                <tr className="border-b border-[var(--line)] text-[var(--muted)]">
+                <tr className="border-b border-[var(--color-line)] text-[var(--color-muted)]">
                   <th className="pb-2">Student</th>
                   <th className="pb-2">Status</th>
                 </tr>
@@ -73,13 +73,13 @@ export default async function TeacherAttendanceClassPage({
                 {enrollments.map((e) => {
                   const current = e.student.attendance[0]?.status || "PRESENT";
                   return (
-                    <tr key={e.id} className="border-b border-[var(--line)]/70">
+                    <tr key={e.id} className="border-b border-[var(--color-line)]/70">
                       <td className="py-2">{e.student.user.name}</td>
                       <td className="py-2">
                         <select
                           name={`status_${e.studentProfileId}`}
                           defaultValue={current}
-                          className="rounded-md border border-[var(--line)] bg-white px-2 py-1"
+                          className="rounded-md border border-[var(--color-line)] bg-[var(--color-panel)] px-2 py-1"
                         >
                           <option value="PRESENT">Present</option>
                           <option value="ABSENT">Absent</option>
@@ -94,7 +94,7 @@ export default async function TeacherAttendanceClassPage({
             </table>
           </div>
           {enrollments.length === 0 ? (
-            <p className="text-sm text-[var(--muted)]">No students enrolled in this class.</p>
+            <p className="text-sm text-[var(--color-muted)]">No students enrolled in this class.</p>
           ) : (
             <SubmitButton>Save attendance</SubmitButton>
           )}

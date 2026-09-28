@@ -2,31 +2,24 @@
 
 import { revalidatePath } from "next/cache";
 import bcrypt from "bcryptjs";
-import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import type { AppRole } from "@/lib/rbac";
-
-async function requireAdmin() {
-  const session = await auth();
-  if (!session?.user || session.user.role !== "ADMIN") {
-    throw new Error("Unauthorized");
-  }
-  return session;
-}
+import { requireRole } from "@/lib/authz";
+import { parseFormData, formDataToObject } from "@/lib/validation";
+import {
+  assignTeacherToClassSchema,
+  createAcademicYearSchema,
+  createClassSchema,
+  createSubjectSchema,
+  createUserSchema,
+  enrollStudentSchema,
+  linkParentStudentSchema,
+} from "@/lib/schemas";
 
 export async function createUser(formData: FormData) {
-  await requireAdmin();
-  const name = String(formData.get("name") || "").trim();
-  const email = String(formData.get("email") || "").trim().toLowerCase();
-  const role = String(formData.get("role") || "") as AppRole;
-  const password = String(formData.get("password") || "");
-  const studentId = String(formData.get("studentId") || "").trim();
+  await requireRole("ADMIN");
+  const { name, email, role, password, studentId } = parseFormData(createUserSchema, formDataToObject(formData));
 
-  if (!name || !email || !password || !role) {
-    throw new Error("Missing required fields");
-  }
-
-  const passwordHash = await bcrypt.hash(password, 10);
+  const passwordHash = await bcrypt.hash(password, 12);
 
   await prisma.user.create({
     data: {
@@ -49,37 +42,33 @@ export async function createUser(formData: FormData) {
 }
 
 export async function createAcademicYear(formData: FormData) {
-  await requireAdmin();
-  const name = String(formData.get("name") || "").trim();
-  if (!name) throw new Error("Name required");
-  await prisma.academicYear.create({ data: { name, isActive: true } });
+  await requireRole("ADMIN");
+  const { name } = parseFormData(createAcademicYearSchema, formDataToObject(formData));
+
+  await prisma.$transaction([
+    prisma.academicYear.updateMany({ where: { isActive: true }, data: { isActive: false } }),
+    prisma.academicYear.create({ data: { name, isActive: true } }),
+  ]);
   revalidatePath("/admin/classes");
 }
 
 export async function createClass(formData: FormData) {
-  await requireAdmin();
-  const name = String(formData.get("name") || "").trim();
-  const section = String(formData.get("section") || "").trim();
-  const academicYearId = String(formData.get("academicYearId") || "");
-  if (!name || !section || !academicYearId) throw new Error("Missing fields");
+  await requireRole("ADMIN");
+  const { name, section, academicYearId } = parseFormData(createClassSchema, formDataToObject(formData));
   await prisma.class.create({ data: { name, section, academicYearId } });
   revalidatePath("/admin/classes");
 }
 
 export async function createSubject(formData: FormData) {
-  await requireAdmin();
-  const name = String(formData.get("name") || "").trim();
-  if (!name) throw new Error("Name required");
+  await requireRole("ADMIN");
+  const { name } = parseFormData(createSubjectSchema, formDataToObject(formData));
   await prisma.subject.create({ data: { name } });
   revalidatePath("/admin/classes");
 }
 
 export async function assignTeacherToClass(formData: FormData) {
-  await requireAdmin();
-  const classId = String(formData.get("classId") || "");
-  const subjectId = String(formData.get("subjectId") || "");
-  const teacherProfileId = String(formData.get("teacherProfileId") || "");
-  if (!classId || !subjectId || !teacherProfileId) throw new Error("Missing fields");
+  await requireRole("ADMIN");
+  const { classId, subjectId, teacherProfileId } = parseFormData(assignTeacherToClassSchema, formDataToObject(formData));
 
   await prisma.classSubject.upsert({
     where: { classId_subjectId: { classId, subjectId } },
@@ -90,10 +79,8 @@ export async function assignTeacherToClass(formData: FormData) {
 }
 
 export async function enrollStudent(formData: FormData) {
-  await requireAdmin();
-  const studentProfileId = String(formData.get("studentProfileId") || "");
-  const classId = String(formData.get("classId") || "");
-  if (!studentProfileId || !classId) throw new Error("Missing fields");
+  await requireRole("ADMIN");
+  const { studentProfileId, classId } = parseFormData(enrollStudentSchema, formDataToObject(formData));
 
   await prisma.enrollment.upsert({
     where: {
@@ -106,10 +93,8 @@ export async function enrollStudent(formData: FormData) {
 }
 
 export async function linkParentStudent(formData: FormData) {
-  await requireAdmin();
-  const parentId = String(formData.get("parentId") || "");
-  const studentId = String(formData.get("studentId") || "");
-  if (!parentId || !studentId) throw new Error("Missing fields");
+  await requireRole("ADMIN");
+  const { parentId, studentId } = parseFormData(linkParentStudentSchema, formDataToObject(formData));
 
   await prisma.parentStudent.upsert({
     where: { parentId_studentId: { parentId, studentId } },

@@ -1,5 +1,4 @@
-import { Schema, model, models } from "mongoose";
-import { nanoid } from "nanoid";
+import { defineModel } from "@/lib/define-model";
 
 export interface IAcademicYear {
   id: string;
@@ -9,19 +8,7 @@ export interface IAcademicYear {
   updatedAt: Date;
 }
 
-const AcademicYearSchema = new Schema<IAcademicYear>({
-  id: { type: String, default: () => nanoid(), required: true },
+export const AcademicYear = defineModel("AcademicYear", {
   name: { type: String, required: true, unique: true },
   isActive: { type: Boolean, default: true },
-  createdAt: { type: Date, default: Date.now },
-  updatedAt: { type: Date, default: Date.now },
 });
-
-AcademicYearSchema.index({ name: 1 }, { unique: true });
-AcademicYearSchema.pre("save", function (next: any) {
-  this.updatedAt = new Date();
-  next();
-});
-
-export const AcademicYear =
-  models.AcademicYear || model<IAcademicYear>("AcademicYear", AcademicYearSchema);

@@ -1,5 +1,4 @@
-import { Schema, model, models } from "mongoose";
-import { nanoid } from "nanoid";
+import { defineModel } from "@/lib/define-model";
 
 export interface ILoginAttempt {
   id: string;
@@ -10,20 +9,11 @@ export interface ILoginAttempt {
   createdAt: Date;
 }
 
-const LoginAttemptSchema = new Schema<ILoginAttempt>({
-  id: { type: String, default: () => nanoid(), required: true },
-  key: { type: String, required: true, unique: true },
-  attempts: { type: Number, default: 0 },
-  lockedAt: { type: Date, default: null },
-  createdAt: { type: Date, default: Date.now },
-  updatedAt: { type: Date, default: Date.now },
-});
-
-LoginAttemptSchema.index({ key: 1 }, { unique: true });
-LoginAttemptSchema.pre("save", function (next: any) {
-  this.updatedAt = new Date();
-  next();
-});
-
-export const LoginAttempt =
-  models.LoginAttempt || model<ILoginAttempt>("LoginAttempt", LoginAttemptSchema);
+export const LoginAttempt = defineModel(
+  "LoginAttempt",
+  {
+    key: { type: String, required: true, unique: true },
+    attempts: { type: Number },
+    lockedAt: { type: Date, default: null },
+  },
+);

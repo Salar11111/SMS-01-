@@ -19,3 +19,39 @@ export function canAccessRolePath(userRole: AppRole, path: string): boolean {
 export function formatRole(role: AppRole): string {
   return role.charAt(0) + role.slice(1).toLowerCase();
 }
+
+export function navFor(role: AppRole): { href: string; label: string }[] {
+  const account = { href: "/account", label: "Password" };
+  if (role === "ADMIN") {
+    return [
+      { href: "/admin", label: "Overview" },
+      { href: "/admin/users", label: "Users" },
+      { href: "/admin/classes", label: "Classes" },
+      { href: "/admin/enrollment", label: "Enrollment" },
+      { href: "/admin/reports", label: "Reports" },
+      account,
+    ];
+  }
+  if (role === "TEACHER") {
+    return [
+      { href: "/teacher", label: "My classes" },
+      { href: "/teacher/attendance", label: "Attendance" },
+      { href: "/teacher/grades", label: "Grades" },
+      account,
+    ];
+  }
+  if (role === "STUDENT") {
+    return [
+      { href: "/student", label: "Overview" },
+      { href: "/student/attendance", label: "Attendance" },
+      { href: "/student/grades", label: "Grades" },
+      account,
+    ];
+  }
+  return [
+    { href: "/parent", label: "Children" },
+    { href: "/parent/attendance", label: "Attendance" },
+    { href: "/parent/grades", label: "Grades" },
+    account,
+  ];
+}

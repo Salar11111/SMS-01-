@@ -1,19 +1,11 @@
-import { redirect } from "next/navigation";
-import { auth } from "@/lib/auth";
 import { DashboardShell } from "@/components/ui";
-
-const nav = [
-  { href: "/teacher", label: "My classes" },
-  { href: "/teacher/attendance", label: "Attendance" },
-  { href: "/teacher/grades", label: "Grades" },
-];
+import { requirePageRole } from "@/lib/authz";
+import { navFor } from "@/lib/rbac";
 
 export default async function TeacherLayout({ children }: { children: React.ReactNode }) {
-  const session = await auth();
-  if (!session?.user || session.user.role !== "TEACHER") redirect("/login");
-
+  const session = await requirePageRole("TEACHER");
   return (
-    <DashboardShell title="Teacher" role={session.user.role} userName={session.user.name} nav={nav}>
+    <DashboardShell title="Teacher" role={session.user.role} userName={session.user.name} nav={navFor("TEACHER")}>
       {children}
     </DashboardShell>
   );

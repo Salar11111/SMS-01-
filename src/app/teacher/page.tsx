@@ -11,10 +11,16 @@ export default async function TeacherHomePage() {
 
   const teacher = await db.teacherProfile_findUnique({
     where: { userId: session!.user.id },
+    populate: { classSubjects: { class: true, subject: true } },
   });
 
   const rows =
-    teacher?.classSubjects.map((cs: any) => [
+    teacher?.classSubjects.map((cs: {
+      id: string;
+      classId: string;
+      class: { name: string; section: string; _count: { enrollments: number } };
+      subject: { name: string };
+    }) => [
       classLabel(cs.class.name, cs.class.section),
       cs.subject.name,
       String(cs.class._count.enrollments),

@@ -7,7 +7,7 @@ A full-stack school management system built with **Next.js 16**, featuring role-
 [![CI](https://img.shields.io/badge/CI-GitHub%20Actions-blue)](.github/workflows/ci.yml)
 ![Next.js](https://img.shields.io/badge/Next.js-16-black)
 ![TypeScript](https://img.shields.io/badge/TypeScript-5-blue)
-![Tests](https://img.shields.io/badge/tests-67%20passing-brightgreen)
+![Tests](https://img.shields.io/badge/tests-73%20passing-brightgreen)
 
 </div>
 
@@ -23,11 +23,11 @@ A full-stack school management system built with **Next.js 16**, featuring role-
 | **Parent** | Children's enrollments, attendance, and academic progress |
 
 **Cross-cutting:**
-- Multi-role authentication with NextAuth.js v5, bcrypt hashing (cost 12), and IP-aware rate limiting
-- Route protection via Next.js 16 proxy (edge middleware)
-- Zod v4 validation on every Server Action and API route
-- Security headers (CSP-ready, HSTS, X-Frame-Options, nosniff)
-- Error boundaries + loading skeletons for every route segment
+- Route protection in `src/proxy.ts`, with each role layout checking the session again
+- Zod validation on every Server Action
+- Security headers (HSTS, X-Frame-Options, nosniff)
+- Failed-login lockout: 5 attempts, then 15 minutes, per email
+- Error boundaries and loading states for route segments
 - Custom design system with light/dark mode, Playfair Display + Inter typography
 - Responsive layout with warm sage/terracotta palette
 - OG metadata, robots.txt, sitemap.xml
@@ -37,13 +37,13 @@ A full-stack school management system built with **Next.js 16**, featuring role-
 
 | Layer | Technology |
 |-------|-----------|
-| Framework | Next.js 16 (App Router, Server Components, Server Actions, middleware.ts) |
+| Framework | Next.js 16 (App Router, Server Components, Server Actions, `src/proxy.ts`) |
 | Language | TypeScript 5 (strict mode) |
-| Database | MongoDB via Mongoose ODM |
-| Authentication | NextAuth.js v5 beta (Credentials provider, JWT sessions) |
+| Database | MongoDB via Mongoose |
+| Authentication | NextAuth.js v5 (Credentials provider, JWT sessions) |
 | Styling | Tailwind CSS v4 with CSS custom properties |
 | Validation | Zod v4 |
-| Unit tests | Vitest + React Testing Library (67 tests) |
+| Unit tests | Vitest + React Testing Library |
 | E2E / a11y | Playwright + axe-core |
 | Icons | Lucide React |
 
@@ -85,7 +85,7 @@ Visit `http://localhost:3000`
 ```bash
 # Development
 npm run dev              # Start dev server
-npm run build            # Prisma generate + Next.js build
+npm run build            # Next.js production build
 npm run start            # Start production server
 
 # Quality
@@ -111,7 +111,7 @@ npm run db:reset         # Reset + re-seed
 
 ```
 src/
-├── middleware.ts           # Next.js 16 edge middleware (route protection)
+├── proxy.ts                # Next.js 16 proxy (route protection)
 ├── app/
 │   ├── layout.tsx              # Root layout (fonts, metadata, providers)
 │   ├── page.tsx                # Marketing landing page
@@ -158,17 +158,10 @@ src/
 │       ├── admin.ts            # Admin mutations (CRUD users, classes, etc.)
 │       ├── teacher.ts          # Teacher mutations (attendance, grades)
 │       └── signout.ts          # Sign out action
-├── models/
-│   └── index.ts                # Mongoose model barrel export
 └── vitest.d.ts                 # Vitest global type declarations
 
 tests/
 └── a11y.spec.ts                # Playwright accessibility tests (axe-core)
-
-prisma/
-├── schema.prisma               # Data model (11 models)
-├── seed.ts                     # Demo data seeder
-└── migrations/                 # Migration history
 ```
 
 ### Folder Structure Assessment
@@ -187,18 +180,18 @@ prisma/
 ## Security
 
 - **Authentication**: JWT sessions, bcrypt cost 12, credentials provider
-- **Authorization**: Edge middleware checks every route; Server Actions re-verify via `requireRole()`
-- **Rate limiting**: 5 failed login attempts → 15-minute lockout (per-email)
+- **Authorization**: `src/proxy.ts` requires a signed-in session. Role layouts and Server Actions check the role again, and the session role is refreshed from the database.
+- **Rate limiting**: 5 failed login attempts → 15-minute lockout (per email). Login errors stay generic.
 - **Input validation**: Zod schemas on every mutation path
 - **Headers**: X-Frame-Options DENY, nosniff, Referrer-Policy, HSTS, Permissions-Policy
 - **Open redirect prevention**: `isSafeCallbackUrl()` validates same-origin
-- **No SQL injection**: 100% typed Mongoose queries (zero raw queries)
+- **Queries**: Mongoose queries with string ids. No raw query strings from request input.
 - **Secrets**: `.env` gitignored; only `.env.example` tracked
 
 ## Testing
 
 ```bash
-# Unit tests (67 tests, 7 files)
+# Unit tests
 npm test
 
 # E2E + accessibility (requires: npx playwright install chromium)
@@ -214,7 +207,6 @@ npm run test:e2e
 
 See **[DEPLOYMENT.md](DEPLOYMENT.md)** for full instructions covering:
 - Vercel deployment
-- Docker with standalone output
 - MongoDB setup and seed strategies
 - Environment variable configuration
 - GitHub Actions CI pipeline

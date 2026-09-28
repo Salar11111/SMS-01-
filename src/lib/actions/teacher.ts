@@ -5,6 +5,7 @@ import { db } from "@/lib/prisma";
 import { requireTeacherProfile, assertTeacherOwnsClass, assertTeacherOwnsAssignment } from "@/lib/authz";
 import { startOfDay } from "@/lib/utils";
 import { parseFormData } from "@/lib/validation";
+import { actionError, type ActionState } from "@/lib/action-result";
 import { createAssignmentSchema, saveAttendanceSchema, saveGradesSchema } from "@/lib/schemas";
 
 function statusEntries(formData: FormData): Record<string, string> {
@@ -23,7 +24,8 @@ function scoreEntries(formData: FormData): Record<string, string> {
   return entries;
 }
 
-export async function saveAttendance(formData: FormData) {
+export async function saveAttendance(_prev: ActionState, formData: FormData): Promise<ActionState> {
+  try {
   const { session, teacher } = await requireTeacherProfile();
   const parsed = parseFormData(saveAttendanceSchema, {
     classId: formData.get("classId"),
@@ -37,18 +39,18 @@ export async function saveAttendance(formData: FormData) {
   const enrollments = await db.enrollment_findMany({ where: { classId: parsed.classId }, select: ["studentProfileId"] });
   if (enrollments.length === 0) {
     revalidatePath(`/teacher/attendance/${parsed.classId}`);
-    return;
+    return { ok: true };
   }
 
-  const existing = await db.attendanceRecord_findMany({ where: { classId: parsed.classId, date, studentProfileId: { in: enrollments.map((e: any) => e.studentProfileId) } }, select: ["studentProfileId"] });
-  const existingIds = new Set(existing.map((r: any) => r.studentProfileId));
+  const existing = await db.attendanceRecord_findMany({ where: { classId: parsed.classId, date, studentProfileId: { in: enrollments.map((e) => e.studentProfileId) } }, select: ["studentProfileId"] });
+  const existingIds = new Set(existing.map((r) => r.studentProfileId));
 
   const statusOf = (studentProfileId: string) =>
     parsed.statuses[`status_${studentProfileId}`] ?? "PRESENT";
 
   const toCreate = enrollments
-    .filter((e: any) => !existingIds.has(e.studentProfileId))
-    .map((e: any) => ({
+    .filter((e) => !existingIds.has(e.studentProfileId))
+    .map((e) => ({
       studentProfileId: e.studentProfileId,
       classId: parsed.classId,
       date,
@@ -56,22 +58,28 @@ export async function saveAttendance(formData: FormData) {
       markedById: session.user.id,
     }));
 
-  await db.$transaction(async (tx) => {
-    if (toCreate.length > 0) await db.attendanceRecord_createMany(toCreate);
-    await Promise.all(
-      enrollments
-        .filter((e: any) => existingIds.has(e.studentProfileId))
-        .map((e: any) =>
-          db.attendanceRecord_updateMany({ studentProfileId: e.studentProfileId, classId: parsed.classId, date, status: statusOf(e.studentProfileId), markedById: session.user.id })
-        )
-    );
-  });
+  if (toCreate.length > 0) await db.attendanceRecord_createMany(toCreate);
+  await Promise.all(
+    enrollments
+      .filter((e: { studentProfileId: string }) => existingIds.has(e.studentProfileId))
+      .map((e: { studentProfileId: string }) =>
+        db.attendanceRecord_updateMany(
+          { studentProfileId: e.studentProfileId, classId: parsed.classId, date },
+          { status: statusOf(e.studentProfileId), markedById: session.user.id },
+        ),
+      ),
+  );
 
   revalidatePath(`/teacher/attendance/${parsed.classId}`);
   revalidatePath("/teacher");
+  return { ok: true };
+  } catch (error) {
+    return actionError(error);
+  }
 }
 
-export async function createAssignment(formData: FormData) {
+export async function createAssignment(_prev: ActionState, formData: FormData): Promise<ActionState> {
+  try {
   const { teacher } = await requireTeacherProfile();
   const parsed = parseFormData(createAssignmentSchema, Object.fromEntries(formData));
 
@@ -92,9 +100,14 @@ export async function createAssignment(formData: FormData) {
 
   revalidatePath("/teacher/grades");
   revalidatePath(`/teacher/grades/${parsed.classId}`);
+  return { ok: true };
+  } catch (error) {
+    return actionError(error);
+  }
 }
 
-export async function saveGrades(formData: FormData) {
+export async function saveGrades(_prev: ActionState, formData: FormData): Promise<ActionState> {
+  try {
   const { teacher } = await requireTeacherProfile();
   const parsed = parseFormData(saveGradesSchema, {
     assignmentId: formData.get("assignmentId"),
@@ -106,18 +119,18 @@ export async function saveGrades(formData: FormData) {
   const enrollments = await db.enrollment_findMany({ where: { classId: assignment.classId }, select: ["studentProfileId"] });
 
   const existing = await db.grade_findMany({
-    where: { assignmentId: assignment.id, studentProfileId: { in: enrollments.map((e: any) => e.studentProfileId) } },
+    where: { assignmentId: assignment.id, studentProfileId: { in: enrollments.map((e) => e.studentProfileId) } },
     select: ["studentProfileId"]
   });
-  const existingIds = new Set(existing.map((g: any) => g.studentProfileId));
+  const existingIds = new Set(existing.map((g) => g.studentProfileId));
 
   const scores = enrollments
-    .map((e: any) => ({ studentProfileId: e.studentProfileId, raw: parsed.scores[`score_${e.studentProfileId}`] }))
-    .filter((s: any) => Boolean(s.raw));
+    .map((e) => ({ studentProfileId: e.studentProfileId, raw: parsed.scores[`score_${e.studentProfileId}`] }))
+    .filter((s) => Boolean(s.raw));
 
   const toCreate = scores
-    .filter((s: any) => !existingIds.has(s.studentProfileId))
-    .map((s: any) => {
+    .filter((s) => !existingIds.has(s.studentProfileId))
+    .map((s) => {
       const score = Number(s.raw);
       if (score < 0 || score > assignment.maxScore) {
         throw new Error(`Score out of range (0–${assignment.maxScore})`);
@@ -125,21 +138,26 @@ export async function saveGrades(formData: FormData) {
       return { assignmentId: assignment.id, studentProfileId: s.studentProfileId, score };
     });
 
-  await db.$transaction(async (tx) => {
-    if (toCreate.length > 0) await db.grade_createMany(toCreate);
-    await Promise.all(
-      scores
-        .filter((s: any) => existingIds.has(s.studentProfileId))
-        .map((s: any) => {
-          const score = Number(s.raw);
-          if (score < 0 || score > assignment.maxScore) {
-            throw new Error(`Score out of range (0–${assignment.maxScore})`);
-          }
-           return db.grade_updateMany({ assignmentId: assignment.id, studentProfileId: s.studentProfileId, score });
-        })
-    );
-  });
+  if (toCreate.length > 0) await db.grade_createMany(toCreate);
+  await Promise.all(
+    scores
+      .filter((s: { studentProfileId: string; raw: string }) => existingIds.has(s.studentProfileId))
+      .map((s: { studentProfileId: string; raw: string }) => {
+        const score = Number(s.raw);
+        if (score < 0 || score > assignment.maxScore) {
+          throw new Error(`Score out of range (0–${assignment.maxScore})`);
+        }
+        return db.grade_updateMany(
+          { assignmentId: assignment.id, studentProfileId: s.studentProfileId },
+          { score },
+        );
+      }),
+  );
 
   revalidatePath(`/teacher/grades/${assignment.classId}`);
   revalidatePath("/teacher/grades");
+  return { ok: true };
+  } catch (error) {
+    return actionError(error);
+  }
 }

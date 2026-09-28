@@ -1,5 +1,4 @@
-import { Schema, model, models } from "mongoose";
-import { nanoid } from "nanoid";
+import { defineModel } from "@/lib/define-model";
 
 export interface IUser {
   id: string;
@@ -7,24 +6,36 @@ export interface IUser {
   passwordHash: string;
   name: string;
   role: string;
+  active: boolean;
   createdAt: Date;
   updatedAt: Date;
 }
 
-const UserSchema = new Schema<IUser>({
-  id: { type: String, default: () => nanoid(), required: true },
-  email: { type: String, required: true, unique: true },
-  passwordHash: { type: String, required: true },
-  name: { type: String, required: true },
-  role: { type: String, required: true },
-  createdAt: { type: Date, default: Date.now },
-  updatedAt: { type: Date, default: Date.now },
-});
-
-UserSchema.index({ email: 1 }, { unique: true });
-UserSchema.pre("save", function (next: any) {
-  this.updatedAt = new Date();
-  next();
-});
-
-export const User = models.User || model<IUser>("User", UserSchema);
+export const User = defineModel(
+  "User",
+  {
+    email: { type: String, required: true, unique: true, lowercase: true, trim: true },
+    passwordHash: { type: String, required: true },
+    name: { type: String, required: true },
+    role: { type: String, required: true },
+    active: { type: Boolean, default: true },
+  },
+  {
+    virtuals: [
+      {
+        name: "studentProfile",
+        ref: "StudentProfile",
+        localField: "_id",
+        foreignField: "userId",
+        justOne: true,
+      },
+      {
+        name: "teacherProfile",
+        ref: "TeacherProfile",
+        localField: "_id",
+        foreignField: "userId",
+        justOne: true,
+      },
+    ],
+  },
+);

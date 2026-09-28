@@ -5,6 +5,7 @@ import {
   createSubject,
   assignTeacherToClass,
 } from "@/lib/actions/admin";
+import { ActionForm } from "@/components/action-form";
 import { PageHeader, Panel, DataTable, Field, SubmitButton } from "@/components/ui";
 import { classLabel } from "@/lib/utils";
 
@@ -32,26 +33,26 @@ export default async function AdminClassesPage() {
 
       <div className="grid gap-6 lg:grid-cols-2">
         <Panel title="Add academic year">
-          <form action={createAcademicYear} className="flex flex-wrap items-end gap-3">
+          <ActionForm action={createAcademicYear} className="flex flex-wrap items-end gap-3">
             <div className="min-w-[180px] flex-1">
               <Field label="Year name" name="name" required defaultValue="2026-2027" />
             </div>
             <SubmitButton>Add year</SubmitButton>
-          </form>
+          </ActionForm>
         </Panel>
 
         <Panel title="Add subject">
-          <form action={createSubject} className="flex flex-wrap items-end gap-3">
+          <ActionForm action={createSubject} className="flex flex-wrap items-end gap-3">
             <div className="min-w-[180px] flex-1">
               <Field label="Subject name" name="name" required />
             </div>
             <SubmitButton>Add subject</SubmitButton>
-          </form>
+          </ActionForm>
         </Panel>
       </div>
 
       <Panel title="Create class">
-        <form action={createClass} className="grid gap-3 sm:grid-cols-4">
+        <ActionForm action={createClass} className="grid gap-3 sm:grid-cols-4">
           <Field label="Class name" name="name" required defaultValue="Grade 10" />
           <Field label="Section" name="section" required defaultValue="B" />
           <label className="block text-sm">
@@ -71,11 +72,11 @@ export default async function AdminClassesPage() {
           <div className="flex items-end">
             <SubmitButton>Create class</SubmitButton>
           </div>
-        </form>
+        </ActionForm>
       </Panel>
 
       <Panel title="Assign teacher to class subject">
-        <form action={assignTeacherToClass} className="grid gap-3 sm:grid-cols-4">
+        <ActionForm action={assignTeacherToClass} className="grid gap-3 sm:grid-cols-4">
           <label className="block text-sm">
             <span className="mb-1 block font-medium text-[var(--color-ink)]">Class</span>
             <select
@@ -121,7 +122,7 @@ export default async function AdminClassesPage() {
           <div className="flex items-end">
             <SubmitButton>Assign</SubmitButton>
           </div>
-        </form>
+        </ActionForm>
       </Panel>
 
       <Panel title="Classes">

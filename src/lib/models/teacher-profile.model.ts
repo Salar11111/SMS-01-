@@ -1,5 +1,4 @@
-import { Schema, model, models } from "mongoose";
-import { nanoid } from "nanoid";
+import { defineModel } from "@/lib/define-model";
 
 export interface ITeacherProfile {
   id: string;
@@ -8,18 +7,15 @@ export interface ITeacherProfile {
   updatedAt: Date;
 }
 
-const TeacherProfileSchema = new Schema<ITeacherProfile>({
-  id: { type: String, default: () => nanoid(), required: true },
-  userId: { type: String, required: true, unique: true },
-  createdAt: { type: Date, default: Date.now },
-  updatedAt: { type: Date, default: Date.now },
-});
-
-TeacherProfileSchema.index({ userId: 1 }, { unique: true });
-TeacherProfileSchema.pre("save", function (next: any) {
-  this.updatedAt = new Date();
-  next();
-});
-
-export const TeacherProfile =
-  models.TeacherProfile || model<ITeacherProfile>("TeacherProfile", TeacherProfileSchema);
+export const TeacherProfile = defineModel(
+  "TeacherProfile",
+  {
+    userId: { type: String, required: true, unique: true },
+  },
+  {
+    virtuals: [
+      { name: "user", ref: "User", localField: "userId", foreignField: "_id", justOne: true },
+      { name: "classSubjects", ref: "ClassSubject", localField: "_id", foreignField: "teacherProfileId" },
+    ],
+  },
+);

@@ -1,19 +1,11 @@
-import { redirect } from "next/navigation";
-import { auth } from "@/lib/auth";
 import { DashboardShell } from "@/components/ui";
-
-const nav = [
-  { href: "/parent", label: "Children" },
-  { href: "/parent/attendance", label: "Attendance" },
-  { href: "/parent/grades", label: "Grades" },
-];
+import { requirePageRole } from "@/lib/authz";
+import { navFor } from "@/lib/rbac";
 
 export default async function ParentLayout({ children }: { children: React.ReactNode }) {
-  const session = await auth();
-  if (!session?.user || session.user.role !== "PARENT") redirect("/login");
-
+  const session = await requirePageRole("PARENT");
   return (
-    <DashboardShell title="Parent" role={session.user.role} userName={session.user.name} nav={nav}>
+    <DashboardShell title="Parent" role={session.user.role} userName={session.user.name} nav={navFor("PARENT")}>
       {children}
     </DashboardShell>
   );

@@ -49,6 +49,22 @@ export const linkParentStudentSchema = z.object({
   studentId: z.string().min(1),
 });
 
+export const updateUserSchema = z.object({
+  userId: z.string().min(1),
+  name: z.string().trim().min(1, "Name is required"),
+  role: RoleSchema,
+});
+
+export const setUserActiveSchema = z.object({
+  userId: z.string().min(1),
+  active: z.enum(["true", "false"]),
+});
+
+export const changePasswordSchema = z.object({
+  currentPassword: z.string().min(1, "Current password is required"),
+  newPassword: z.string().min(8, "Password must be at least 8 characters"),
+});
+
 export const saveAttendanceSchema = z.object({
   classId: z.string().min(1),
   date: z.coerce.date(),

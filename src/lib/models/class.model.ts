@@ -1,5 +1,4 @@
-import { Schema, model, models } from "mongoose";
-import { nanoid } from "nanoid";
+import { defineModel } from "@/lib/define-model";
 
 export interface IClass {
   id: string;
@@ -10,19 +9,23 @@ export interface IClass {
   updatedAt: Date;
 }
 
-const ClassSchema = new Schema<IClass>({
-  id: { type: String, default: () => nanoid(), required: true },
-  name: { type: String, required: true },
-  section: { type: String, required: true },
-  academicYearId: { type: String, required: true },
-  createdAt: { type: Date, default: Date.now },
-  updatedAt: { type: Date, default: Date.now },
-});
-
-ClassSchema.index({ name: 1, section: 1, academicYearId: 1 }, { unique: true });
-ClassSchema.pre("save", function (next: any) {
-  this.updatedAt = new Date();
-  next();
-});
-
-export const Class = models.Class || model<IClass>("Class", ClassSchema);
+export const Class = defineModel(
+  "Class",
+  {
+    name: { type: String, required: true },
+    section: { type: String, required: true },
+    academicYearId: { type: String, required: true },
+  },
+  {
+    indexes: [{ fields: { name: 1, section: 1, academicYearId: 1 }, unique: true }],
+    virtuals: [
+      {
+        name: "academicYear",
+        ref: "AcademicYear",
+        localField: "academicYearId",
+        foreignField: "_id",
+        justOne: true,
+      },
+    ],
+  },
+);

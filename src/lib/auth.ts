@@ -1,4 +1,4 @@
-import NextAuth from "next-auth";
+import NextAuth, { type Session } from "next-auth";
 import Credentials from "next-auth/providers/credentials";
 import bcrypt from "bcryptjs";
 import { db } from "@/lib/prisma";
@@ -24,11 +24,48 @@ declare module "@auth/core/jwt" {
   interface JWT {
     id: string;
     role: AppRole;
+    invalid?: boolean;
   }
 }
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   ...authConfig,
+  callbacks: {
+    ...authConfig.callbacks,
+    async jwt({ token, user }) {
+      if (user) {
+        token.id = user.id!;
+        token.role = (user as { role: AppRole }).role;
+        token.name = user.name;
+        token.email = user.email;
+      }
+      if (!token.id) return token;
+
+      const dbUser = await db.user_findUnique({ id: token.id });
+      if (!dbUser || dbUser.active === false) {
+        token.invalid = true;
+        return token;
+      }
+      token.invalid = false;
+      token.role = dbUser.role as AppRole;
+      token.name = dbUser.name;
+      token.email = dbUser.email;
+      return token;
+    },
+    async session({ session, token }): Promise<Session> {
+      if (token.invalid || !token.id || !session.user) {
+        return {
+          ...session,
+          user: { id: "", email: "", name: "", role: "STUDENT" },
+        };
+      }
+      session.user.id = token.id;
+      session.user.role = token.role as AppRole;
+      session.user.name = (token.name as string) || session.user.name;
+      session.user.email = (token.email as string) || session.user.email || "";
+      return session;
+    },
+  },
   providers: [
     Credentials({
       name: "Credentials",
@@ -36,7 +73,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         email: { label: "Email", type: "email" },
         password: { label: "Password", type: "password" },
       },
-      async authorize(credentials: any) {
+      async authorize(credentials) {
         const email = credentials?.email as string | undefined;
         const password = credentials?.password as string | undefined;
         if (!email || !password) return null;
@@ -45,7 +82,10 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         if (await isLoginBlocked(key)) return null;
 
         const user = await db.user_findUnique({ email: key });
-        const valid = user && (await bcrypt.compare(password, user.passwordHash));
+        const valid =
+          user &&
+          user.active !== false &&
+          (await bcrypt.compare(password, user.passwordHash));
         if (!valid) {
           await recordLoginFailure(key);
           return null;
@@ -54,9 +94,9 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         await resetLoginAttempts(key);
 
         return {
-          id: user.id,
-          email: user.email,
-          name: user.name,
+          id: user.id as string,
+          email: user.email as string,
+          name: user.name as string,
           role: user.role as AppRole,
         };
       },

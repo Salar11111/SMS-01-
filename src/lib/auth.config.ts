@@ -1,4 +1,4 @@
-import type { NextAuthConfig } from "next-auth";
+import type { NextAuthConfig, Session } from "next-auth";
 
 export type SessionRole = "ADMIN" | "TEACHER" | "STUDENT" | "PARENT";
 
@@ -16,11 +16,15 @@ export const authConfig = {
       }
       return token;
     },
-    async session({ session, token }) {
-      if (session.user) {
-        session.user.id = token.id as string;
-        session.user.role = token.role as SessionRole;
+    async session({ session, token }): Promise<Session> {
+      if (!session.user || token.invalid || !token.id) {
+        return {
+          ...session,
+          user: { id: "", email: "", name: "", role: "STUDENT" },
+        };
       }
+      session.user.id = token.id as string;
+      session.user.role = token.role as SessionRole;
       return session;
     },
   },

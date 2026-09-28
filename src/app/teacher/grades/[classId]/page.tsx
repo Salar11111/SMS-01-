@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/prisma";
 import { createAssignment, saveGrades } from "@/lib/actions/teacher";
+import { ActionForm } from "@/components/action-form";
 import { PageHeader, Panel, Field, SubmitButton, DataTable } from "@/components/ui";
 import { classLabel, formatDate } from "@/lib/utils";
 
@@ -48,7 +49,7 @@ export default async function TeacherGradebookPage({
       />
 
       <Panel title="New assignment">
-        <form action={createAssignment} className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+        <ActionForm action={createAssignment} className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
           <input type="hidden" name="classId" value={classId} />
           <Field label="Title" name="title" required />
           <label className="block text-sm">
@@ -70,10 +71,17 @@ export default async function TeacherGradebookPage({
           <div className="flex items-end">
             <SubmitButton>Create</SubmitButton>
           </div>
-        </form>
+        </ActionForm>
       </Panel>
 
-{assignments.map((a: any) => (
+{assignments.map((a: {
+        id: string;
+        title: string;
+        subject: { name: string };
+        maxScore: number;
+        dueDate?: Date | null;
+        grades: { studentProfileId: string; score: number }[];
+      }) => (
          <Panel
            key={a.id}
            title={`${a.title} · ${a.subject.name} (max ${a.maxScore})`}
@@ -83,7 +91,7 @@ export default async function TeacherGradebookPage({
             ) : null
           }
         >
-          <form action={saveGrades} className="space-y-3">
+          <ActionForm action={saveGrades} className="space-y-3">
             <input type="hidden" name="assignmentId" value={a.id} />
             <div className="overflow-x-auto">
               <table className="w-full text-left text-sm">
@@ -94,8 +102,8 @@ export default async function TeacherGradebookPage({
                   </tr>
                 </thead>
                 <tbody>
-{enrollments.map((e: any) => {
-                     const existing = a.grades.find((g: any) => g.studentProfileId === e.studentProfileId);
+{enrollments.map((e: { id: string; studentProfileId: string; student: { user: { name: string } } }) => {
+                     const existing = a.grades.find((g) => g.studentProfileId === e.studentProfileId);
                     return (
                       <tr key={e.id} className="border-b border-[var(--color-line)]/70">
                         <td className="py-2">{e.student.user.name}</td>
@@ -115,7 +123,7 @@ export default async function TeacherGradebookPage({
               </table>
             </div>
             <SubmitButton>Save grades</SubmitButton>
-          </form>
+          </ActionForm>
         </Panel>
       ))}
 

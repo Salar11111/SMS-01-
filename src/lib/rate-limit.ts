@@ -1,4 +1,4 @@
-import { db } from "@/lib/prisma";
+import { attemptsIncrement, db } from "@/lib/prisma";
 
 const MAX_ATTEMPTS = 5;
 const LOCK_DURATION_MS = 15 * 60 * 1000;
@@ -17,11 +17,7 @@ export async function isLoginBlocked(key: string): Promise<boolean> {
 }
 
 export async function recordLoginFailure(key: string): Promise<void> {
-  const attempt = await db.loginAttempt_upsert(
-    { key },
-    { key, attempts: 1 },
-    { attempts: { increment: 1 } }
-  );
+  const attempt = await db.loginAttempt_upsert({ key }, { key, attempts: 1 }, attemptsIncrement());
   if (attempt.attempts >= MAX_ATTEMPTS && !attempt.lockedAt) {
     await db.loginAttempt_update({ id: attempt.id }, { lockedAt: new Date() });
   }

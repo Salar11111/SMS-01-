@@ -10,27 +10,35 @@ export default async function StudentHomePage() {
 
   const profile = await db.studentProfile_findUnique({
     where: { userId: session!.user.id },
+    populate: {
+      enrollments: { class: { academicYear: true } },
+      attendance: true,
+      grades: { assignment: true },
+    },
   });
 
   if (!profile) {
     return <EmptyState message="Student profile not found." />;
   }
 
-  const present = profile.attendance.filter(
-(a: any) => a.status === "PRESENT" || a.status === "LATE",
-   ).length;
+  const present = (profile.attendance as { status: string }[]).filter(
+    (record) => record.status === "PRESENT" || record.status === "LATE",
+  ).length;
    const rate =
      profile.attendance.length === 0
        ? "—"
        : `${Math.round((present / profile.attendance.length) * 100)}%`;
 
+   const graded = profile.grades.filter((g: { assignment?: { maxScore?: number } }) => (g.assignment?.maxScore ?? 0) > 0);
    const avgScore =
-     profile.grades.length === 0
+     graded.length === 0
        ? "—"
        : `${Math.round(
-           (profile.grades.reduce((sum: any, g: any) => sum + g.score, 0) /
-             profile.grades.length) *
-             100,
+           graded.reduce(
+             (sum: number, g: { score: number; assignment: { maxScore: number } }) =>
+               sum + (g.score / g.assignment.maxScore) * 100,
+             0,
+           ) / graded.length,
          )}%`;
 
   return (
@@ -73,9 +81,9 @@ export default async function StudentHomePage() {
         </div>
         <DataTable
           headers={["Class", "Year"]}
-rows={profile.enrollments.map((e: any) => [
-             classLabel(e.class.name, e.class.section),
-             e.class.academicYear.name,
+rows={(profile.enrollments as { class: { name: string; section: string; academicYear: { name: string } } }[]).map((enrollment) => [
+             classLabel(enrollment.class.name, enrollment.class.section),
+             enrollment.class.academicYear.name,
            ])}
         />
       </Panel>

@@ -1,5 +1,4 @@
-import { Schema, model, models } from "mongoose";
-import { nanoid } from "nanoid";
+import { defineModel } from "@/lib/define-model";
 
 export interface IParentStudent {
   id: string;
@@ -9,20 +8,17 @@ export interface IParentStudent {
   updatedAt: Date;
 }
 
-const ParentStudentSchema = new Schema<IParentStudent>({
-  id: { type: String, default: () => nanoid(), required: true },
-  parentId: { type: String, required: true },
-  studentId: { type: String, required: true },
-  createdAt: { type: Date, default: Date.now },
-  updatedAt: { type: Date, default: Date.now },
-});
-
-ParentStudentSchema.index({ parentId: 1, studentId: 1 }, { unique: true });
-ParentStudentSchema.index({ studentId: 1 });
-ParentStudentSchema.pre("save", function (next: any) {
-  this.updatedAt = new Date();
-  next();
-});
-
-export const ParentStudent =
-  models.ParentStudent || model<IParentStudent>("ParentStudent", ParentStudentSchema);
+export const ParentStudent = defineModel(
+  "ParentStudent",
+  {
+    parentId: { type: String, required: true },
+    studentId: { type: String, required: true },
+  },
+  {
+    indexes: [{ fields: { parentId: 1, studentId: 1 }, unique: true }, { fields: { studentId: 1 } }],
+    virtuals: [
+      { name: "parent", ref: "User", localField: "parentId", foreignField: "_id", justOne: true },
+      { name: "student", ref: "StudentProfile", localField: "studentId", foreignField: "_id", justOne: true },
+    ],
+  },
+);

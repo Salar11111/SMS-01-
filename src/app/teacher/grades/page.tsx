@@ -8,10 +8,11 @@ export default async function TeacherGradesIndexPage() {
   const session = await auth();
   const teacher = await db.teacherProfile_findUnique({
     where: { userId: session!.user.id },
+    populate: { classSubjects: { class: true, subject: true } },
   });
 
   const uniqueClasses = new Map<string, { name: string; section: string }>();
-  teacher?.classSubjects.forEach((cs: any) => {
+  teacher?.classSubjects.forEach((cs: { classId: string; class: { name: string; section: string } }) => {
     uniqueClasses.set(cs.classId, { name: cs.class.name, section: cs.class.section });
   });
 

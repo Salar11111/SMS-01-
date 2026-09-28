@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/prisma";
 import { saveAttendance } from "@/lib/actions/teacher";
+import { ActionForm } from "@/components/action-form";
 import { PageHeader, Panel, SubmitButton } from "@/components/ui";
 import { classLabel, startOfDay, dateInputValue, formatDate } from "@/lib/utils";
 
@@ -39,7 +40,7 @@ export default async function TeacherAttendanceClassPage({
         description={`Marking for ${formatDate(today)}`}
       />
       <Panel>
-        <form action={saveAttendance} className="space-y-4">
+        <ActionForm action={saveAttendance} className="space-y-4">
           <input type="hidden" name="classId" value={classId} />
           <label className="block text-sm">
             <span className="mb-1 block font-medium">Date</span>
@@ -87,7 +88,7 @@ export default async function TeacherAttendanceClassPage({
           ) : (
             <SubmitButton>Save attendance</SubmitButton>
           )}
-        </form>
+        </ActionForm>
       </Panel>
     </div>
   );

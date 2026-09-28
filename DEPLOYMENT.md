@@ -54,64 +54,11 @@ npm run db:seed
 
 Or use a GitHub Actions workflow for automatic seeding.
 
-## Docker Deployment
+## Run with Node
 
-### Dockerfile
+Production uses `npm run build` and `npm run start`. `next.config.ts` does not set `output: "standalone"`, so a Docker image should run `next start` with `MONGODB_URI`, `AUTH_SECRET`, and `NEXTAUTH_URL` set. A standalone server copy is not part of this repo.
 
-```dockerfile
-FROM node:20-alpine AS base
-
-RUN apk add --no-cache libc6-compat
-WORKDIR /app
-COPY package.json package-lock.json* ./
-RUN npm ci
-
-FROM base AS builder
-WORKDIR /app
-COPY --from=base /app/node_modules ./node_modules
-COPY . .
-RUN npm run build
-
-FROM base AS runner
-WORKDIR /app
-ENV NODE_ENV=production
-COPY --from=builder /app/public ./public
-COPY --from=builder /app/.next/standalone ./
-COPY --from=builder /app/.next/static ./.next/static
-COPY --from=builder /app/node_modules ./node_modules
-
-EXPOSE 3000
-CMD ["node", ".next/standalone/server.js"]
-```
-
-### docker-compose.yml
-
-```yaml
-version: '3.8'
-services:
-  app:
-    build: .
-    ports:
-      - "3000:3000"
-    environment:
-      - MONGODB_URI=mongodb://mongo:27017/school-management
-      - AUTH_SECRET=your-secret
-      - NEXTAUTH_URL=http://localhost:3000
-    depends_on:
-      - mongo
-
-  mongo:
-    image: mongo:7
-    ports:
-      - "27017:27017"
-    volumes:
-      - mongo_data:/data/db
-
-volumes:
-  mongo_data:
-```
-
-## Environment-Specific Configurations
+## Environment-specific configurations
 
 ### Development (.env)
 ```env

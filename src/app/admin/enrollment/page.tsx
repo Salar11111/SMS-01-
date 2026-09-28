@@ -1,5 +1,6 @@
 import { db } from "@/lib/prisma";
 import { enrollStudent, linkParentStudent } from "@/lib/actions/admin";
+import { ActionForm } from "@/components/action-form";
 import { PageHeader, Panel, DataTable, SubmitButton } from "@/components/ui";
 import { classLabel } from "@/lib/utils";
 
@@ -26,7 +27,7 @@ export default async function AdminEnrollmentPage() {
 
       <div className="grid gap-6 lg:grid-cols-2">
         <Panel title="Enroll student">
-          <form action={enrollStudent} className="space-y-3">
+          <ActionForm action={enrollStudent} className="space-y-3">
             <label className="block text-sm">
               <span className="mb-1 block font-medium text-[var(--color-ink)]">Student</span>
               <select
@@ -56,11 +57,11 @@ export default async function AdminEnrollmentPage() {
               </select>
             </label>
             <SubmitButton>Enroll</SubmitButton>
-          </form>
+          </ActionForm>
         </Panel>
 
         <Panel title="Link parent to student">
-          <form action={linkParentStudent} className="space-y-3">
+          <ActionForm action={linkParentStudent} className="space-y-3">
             <label className="block text-sm">
               <span className="mb-1 block font-medium text-[var(--color-ink)]">Parent</span>
               <select
@@ -90,7 +91,7 @@ export default async function AdminEnrollmentPage() {
               </select>
             </label>
             <SubmitButton>Link</SubmitButton>
-          </form>
+          </ActionForm>
         </Panel>
       </div>
 

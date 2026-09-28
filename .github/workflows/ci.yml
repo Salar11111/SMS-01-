@@ -31,5 +31,5 @@ jobs:
       - name: Build
         run: npm run build
         env:
-          NEXTAUTH_SECRET: ci-secret
-          DATABASE_URL: file:./ci.db
+          AUTH_SECRET: ci-secret-ci-secret-ci-secret-32
+          MONGODB_URI: mongodb://127.0.0.1:27017/school-management-ci

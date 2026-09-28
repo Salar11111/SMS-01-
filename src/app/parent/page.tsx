@@ -34,9 +34,9 @@ export default async function ParentHomePage() {
           </SectionLabel>
 
           {links.map((l) => {
-            const present = l.student.attendance.filter(
-(a: any) => a.status === "PRESENT" || a.status === "LATE",
-             ).length;
+            const present = (l.student.attendance as { status: string }[]).filter(
+              (record) => record.status === "PRESENT" || record.status === "LATE",
+            ).length;
              const rate =
                l.student.attendance.length === 0
                  ? "—"
@@ -72,8 +72,8 @@ export default async function ParentHomePage() {
 
                  <DataTable
                    headers={["Class"]}
-                   rows={l.student.enrollments.map((e: any) => [
-                     classLabel(e.class.name, e.class.section),
+                   rows={(l.student.enrollments as { class: { name: string; section: string } }[]).map((enrollment) => [
+                     classLabel(enrollment.class.name, enrollment.class.section),
                    ])}
                  />
               </div>

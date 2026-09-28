@@ -1,6 +1,7 @@
+import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/prisma";
-import type { AppRole } from "@/lib/rbac";
+import { ROLE_HOME, type AppRole } from "@/lib/rbac";
 
 export class UnauthorizedError extends Error {
   constructor(message = "Unauthorized") {
@@ -25,6 +26,13 @@ export async function requireUser() {
 export async function requireRole(...roles: AppRole[]) {
   const session = await requireUser();
   if (!roles.includes(session.user.role)) throw new ForbiddenError();
+  return session;
+}
+
+export async function requirePageRole(role: AppRole) {
+  const session = await auth();
+  if (!session?.user?.id) redirect("/login");
+  if (session.user.role !== role) redirect(ROLE_HOME[session.user.role]);
   return session;
 }
 

@@ -1,9 +1,15 @@
 import { Suspense } from "react";
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { LoginForm } from "@/components/login-form";
+import { auth } from "@/lib/auth";
+import { ROLE_HOME } from "@/lib/rbac";
 import { School, Shield } from "lucide-react";
 
-export default function LoginPage() {
+export default async function LoginPage() {
+  const session = await auth();
+  if (session?.user?.id && session.user.role) redirect(ROLE_HOME[session.user.role]);
+
   return (
     <div className="relative min-h-screen overflow-hidden gradient-hero">
       <div className="pointer-events-none absolute -left-32 top-0 h-96 w-96 rounded-full bg-[var(--color-sage-light)] blur-3xl opacity-60" />

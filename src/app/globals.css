@@ -186,6 +186,36 @@ h1, h2, h3, h4, h5, h6 {
   0%, 100% { transform: translateY(0); }
   50% { transform: translateY(-8px); }
 }
+@keyframes portalOpen {
+  0% { transform: scale(1); }
+  35% { transform: scale(4); }
+  60% { transform: scale(10); }
+  80% { transform: scale(22); }
+  100% { transform: scale(calc(320vmax / 48px)); }
+}
+@keyframes portalClose {
+  0% { transform: scale(calc(320vmax / 48px)); }
+  20% { transform: scale(22); }
+  50% { transform: scale(8); }
+  100% { transform: scale(1); }
+}
+@keyframes portalSpin {
+  to { transform: rotate(360deg); }
+}
+@keyframes portalRingIn {
+  0% { transform: scale(0.2); opacity: 0; }
+  40% { opacity: 1; }
+  100% { transform: scale(1); opacity: 1; }
+}
+@keyframes portalCore {
+  0% { transform: scale(0.2); opacity: 0; }
+  45% { opacity: 1; }
+  100% { transform: scale(1); opacity: 1; }
+}
+@keyframes portalRipple {
+  0% { transform: scale(0.4); opacity: 0.9; }
+  100% { transform: scale(9); opacity: 0; }
+}
 
 /* ── Utility classes ── */
 .animate-fade-in { animation: fadeIn var(--transition-base) ease-out both; }
@@ -309,6 +339,110 @@ h1, h2, h3, h4, h5, h6 {
   .stat-card {
     @apply rounded-2xl border border-[var(--color-line)] bg-[var(--color-panel)] p-6 shadow-[var(--shadow-card)] transition-all duration-300 hover:shadow-[var(--shadow-card-hover)] hover:-translate-y-1;
   }
+}
+
+/* ── Portal transition ── */
+.portal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  overflow: hidden;
+  pointer-events: none;
+}
+.portal-overlay-open,
+.portal-overlay-hold {
+  pointer-events: auto;
+}
+.portal-origin {
+  position: absolute;
+  width: 0;
+  height: 0;
+}
+.portal-iris {
+  position: absolute;
+  width: 48px;
+  height: 48px;
+  margin-left: -24px;
+  margin-top: -24px;
+  border-radius: 50%;
+  background:
+    radial-gradient(
+      circle at center,
+      color-mix(in srgb, white 78%, var(--color-primary-soft)) 0 5%,
+      var(--color-primary) 16%,
+      var(--color-sage-hover) 32%,
+      color-mix(in srgb, var(--color-ink) 86%, black) 58%
+    );
+  box-shadow: inset 0 0 80px color-mix(in srgb, white 35%, transparent);
+  transform: scale(1);
+  transform-origin: center center;
+}
+.portal-overlay-open .portal-iris {
+  animation: portalOpen 820ms linear forwards;
+}
+.portal-overlay-hold .portal-iris {
+  transform: scale(calc(320vmax / 48px));
+}
+.portal-overlay-close .portal-iris {
+  animation: portalClose 560ms linear forwards;
+}
+.portal-ring-spin {
+  position: absolute;
+  left: 0;
+  top: 0;
+  animation: portalSpin 1.5s linear infinite;
+}
+.portal-ring-spin-reverse {
+  animation-duration: 2.1s;
+  animation-direction: reverse;
+}
+.portal-ring {
+  position: absolute;
+  width: 92px;
+  height: 92px;
+  margin-left: -46px;
+  margin-top: -46px;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  border-top-color: white;
+  border-right-color: color-mix(in srgb, var(--color-terracotta) 75%, white);
+  box-shadow: 0 0 22px color-mix(in srgb, var(--color-primary) 55%, transparent);
+  animation: portalRingIn 420ms ease-out both;
+}
+.portal-ring-b {
+  width: 148px;
+  height: 148px;
+  margin-left: -74px;
+  margin-top: -74px;
+  border-top-color: var(--color-primary-soft);
+  border-left-color: white;
+  animation-delay: 80ms;
+}
+.portal-core {
+  position: absolute;
+  width: 22px;
+  height: 22px;
+  margin-left: -11px;
+  margin-top: -11px;
+  border-radius: 50%;
+  background: radial-gradient(circle, white 0%, var(--color-primary-soft) 42%, transparent 72%);
+  animation: portalCore 380ms ease-out both;
+}
+.portal-ripple {
+  position: absolute;
+  width: 40px;
+  height: 40px;
+  margin-left: -20px;
+  margin-top: -20px;
+  border-radius: 50%;
+  border: 2px solid var(--color-primary);
+  animation: portalRipple 700ms ease-out forwards;
+}
+.portal-overlay-close .portal-ring-spin,
+.portal-overlay-close .portal-core,
+.portal-overlay-close .portal-ripple {
+  opacity: 0;
+  transition: opacity 160ms ease;
 }
 
 /* ── Reduced motion ── */

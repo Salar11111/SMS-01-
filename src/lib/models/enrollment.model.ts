@@ -1,5 +1,4 @@
-import { Schema, model, models } from "mongoose";
-import { nanoid } from "nanoid";
+import { defineModel } from "@/lib/define-model";
 
 export interface IEnrollment {
   id: string;
@@ -10,20 +9,27 @@ export interface IEnrollment {
   updatedAt: Date;
 }
 
-const EnrollmentSchema = new Schema<IEnrollment>({
-  id: { type: String, default: () => nanoid(), required: true },
-  studentProfileId: { type: String, required: true },
-  classId: { type: String, required: true },
-  enrolledAt: { type: Date, default: Date.now },
-  createdAt: { type: Date, default: Date.now },
-  updatedAt: { type: Date, default: Date.now },
-});
-
-EnrollmentSchema.index({ studentProfileId: 1, classId: 1 }, { unique: true });
-EnrollmentSchema.index({ classId: 1 });
-EnrollmentSchema.pre("save", function (next: any) {
-  this.updatedAt = new Date();
-  next();
-});
-
-export const Enrollment = models.Enrollment || model<IEnrollment>("Enrollment", EnrollmentSchema);
+export const Enrollment = defineModel(
+  "Enrollment",
+  {
+    studentProfileId: { type: String, required: true },
+    classId: { type: String, required: true },
+    enrolledAt: { type: Date, default: Date.now },
+  },
+  {
+    indexes: [
+      { fields: { studentProfileId: 1, classId: 1 }, unique: true },
+      { fields: { classId: 1 } },
+    ],
+    virtuals: [
+      {
+        name: "student",
+        ref: "StudentProfile",
+        localField: "studentProfileId",
+        foreignField: "_id",
+        justOne: true,
+      },
+      { name: "class", ref: "Class", localField: "classId", foreignField: "_id", justOne: true },
+    ],
+  },
+);

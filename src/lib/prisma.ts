@@ -1,357 +1,370 @@
-import mongoose from "mongoose";
+import { nanoid } from "nanoid";
+import type { Model } from "mongoose";
+import { connectDB } from "@/lib/db-connect";
 import {
-  User,
-  StudentProfile,
-  TeacherProfile,
-  ParentStudent,
+  attemptsIncrement,
+  buildPopulate,
+  collectClassDocs,
+  mapGroupRows,
+  mongoSort,
+  normalizeWhere,
+  present,
+  selectFields,
+  sortInMemory,
+  unwrapArgs,
+} from "@/lib/db-query";
+import {
   AcademicYear,
+  Assignment,
+  AttendanceRecord,
   Class,
-  Subject,
   ClassSubject,
   Enrollment,
-  AttendanceRecord,
-  Assignment,
   Grade,
   LoginAttempt,
+  ParentStudent,
+  StudentProfile,
+  Subject,
+  TeacherProfile,
+  User,
 } from "./models";
 
-function getModel(modelName: string) {
-  return mongoose.model(modelName);
-}
+const LEAN = { virtuals: true } as const;
 
-async function runTransaction<T>(
-  fn: (tx: any) => Promise<T>
-): Promise<T> {
-  const session = await mongoose.startSession();
-  session.startTransaction();
-  try {
-    const result = await fn(session);
-    await session.commitTransaction();
-    return result;
-  } catch (error) {
-    await session.abortTransaction();
-    throw error;
-  } finally {
-    session.endSession();
+async function attachClassCounts(root: unknown) {
+  const classes = collectClassDocs(root);
+  if (classes.length === 0) return;
+  const ids = [...new Set(classes.map((klass) => String(klass.id ?? klass._id)))];
+  const [enrollmentCounts, attendanceCounts] = await Promise.all([
+    Enrollment.aggregate<{ _id: string; count: number }>([
+      { $match: { classId: { $in: ids } } },
+      { $group: { _id: "$classId", count: { $sum: 1 } } },
+    ]),
+    AttendanceRecord.aggregate<{ _id: string; count: number }>([
+      { $match: { classId: { $in: ids } } },
+      { $group: { _id: "$classId", count: { $sum: 1 } } },
+    ]),
+  ]);
+  const enrollmentMap = new Map(enrollmentCounts.map((row) => [String(row._id), row.count]));
+  const attendanceMap = new Map(attendanceCounts.map((row) => [String(row._id), row.count]));
+  for (const klass of classes) {
+    const id = String(klass.id ?? klass._id);
+    klass._count = {
+      enrollments: enrollmentMap.get(id) ?? 0,
+      attendance: attendanceMap.get(id) ?? 0,
+    };
   }
 }
 
-function buildPopulate(populate: Record<string, boolean | string | object>): any[] {
-  const result: any[] = [];
-  for (const [key, value] of Object.entries(populate)) {
-    if (value === true) {
-      result.push(key);
-    } else if (typeof value === "string") {
-      result.push({ path: key, select: value });
-    } else {
-      result.push({ path: key, populate: buildPopulate(value as Record<string, boolean | string | object>) });
-    }
-  }
-  return result;
+async function readMany(model: Model<any>, params: unknown, hidePassword = false): Promise<any[]> {
+  const args = unwrapArgs(params);
+  let query = model.find(normalizeWhere(args.where));
+  const sort = mongoSort(args.orderBy);
+  if (sort) query = query.sort(sort);
+  const fields = selectFields(args.select);
+  if (fields) query = query.select(fields);
+  else if (hidePassword) query = query.select("-passwordHash");
+  const populate = buildPopulate(args.populate);
+  if (populate.length > 0) query = query.populate(populate);
+  const docs = present(await query.lean(LEAN));
+  await attachClassCounts(docs);
+  if (!sort && args.orderBy) return sortInMemory(docs as unknown[], args.orderBy);
+  return docs;
 }
 
-function parseOrderBy(orderBy: Record<string, string> | Array<Record<string, string>>): any[] {
-  if (Array.isArray(orderBy)) {
-    const result: any[] = [];
-    for (const o of orderBy) {
-      for (const [key, val] of Object.entries(o)) {
-        result.push([key, val === "asc" ? 1 : -1]);
-      }
-    }
-    return result;
-  }
-  const result: any[] = [];
-  for (const [key, val] of Object.entries(orderBy)) {
-    result.push([key, val === "asc" ? 1 : -1]);
-  }
-  return result;
+async function readOne(model: Model<any>, params: unknown): Promise<any> {
+  const args = unwrapArgs(params);
+  let query = model.findOne(normalizeWhere(args.where));
+  const populate = buildPopulate(args.populate);
+  if (populate.length > 0) query = query.populate(populate);
+  const doc = present(await query.lean(LEAN));
+  if (doc) await attachClassCounts(doc);
+  return doc;
 }
 
-async function runAggregate(pipeline: any[]): Promise<any[]> {
-  return getModel("AttendanceRecord").aggregate(pipeline).exec();
+async function createOne(model: Model<any>, data: Record<string, unknown>): Promise<any> {
+  return model.create(data);
 }
 
-const db = {
-  // User
+async function updateOne(model: Model<any>, where: Record<string, unknown>, data: Record<string, unknown>): Promise<any> {
+  return present(
+    await model.findOneAndUpdate(normalizeWhere(where), data, { new: true }).lean(LEAN),
+  );
+}
+
+async function updateMany(model: Model<any>, where: Record<string, unknown>, data: Record<string, unknown>) {
+  return model.updateMany(normalizeWhere(where), data).exec();
+}
+
+async function upsert(
+  model: Model<any>,
+  where: Record<string, unknown>,
+  createData: Record<string, unknown>,
+  updateData: Record<string, unknown>,
+) {
+  const filter = normalizeWhere(where);
+  const operators = Object.keys(updateData).some((key) => key.startsWith("$"));
+  if (operators) {
+    return present(
+      await model
+        .findOneAndUpdate(
+          filter,
+          { ...updateData, $setOnInsert: { _id: nanoid(), ...filter } },
+          { new: true, upsert: true },
+        )
+        .lean(LEAN),
+    );
+  }
+  const existing = await model.findOne(filter).lean(LEAN);
+  if (existing) {
+    if (Object.keys(updateData).length === 0) return present(existing);
+    return present(await model.findOneAndUpdate(filter, updateData, { new: true }).lean(LEAN));
+  }
+  return model.create({ ...createData, ...where });
+}
+
+const api = {
   async user_create(data: Record<string, unknown>) {
-    return User.create(data);
+    return createOne(User, data);
   },
-  async user_findUnique(where: Record<string, unknown>) {
-    return User.findOne(where).lean();
+  async user_findUnique(where: unknown) {
+    return readOne(User, where);
   },
-  async user_findMany(params: any = {}) {
-    const { where, orderBy, select, populate } = params;
-    let query = User.find(where || {});
-    if (orderBy) query = query.sort(parseOrderBy(orderBy));
-    if (select) {
-      const keys = Object.keys(select);
-      query = query.select(keys);
-    }
-    if (populate) query = query.populate(buildPopulate(populate));
-    return query.lean();
+  async user_findMany(params: unknown = {}) {
+    return readMany(User, params, true);
   },
   async user_count(where?: Record<string, unknown>) {
-    return User.countDocuments(where).exec();
+    return User.countDocuments(normalizeWhere(where)).exec();
+  },
+  async user_update(where: Record<string, unknown>, data: Record<string, unknown>) {
+    return updateOne(User, where, data);
   },
   async user_updateMany(where: Record<string, unknown>, data: Record<string, unknown>) {
-    return User.updateMany(where, data).exec();
-  },
-  async user_getClassStats(classId: string) {
-    return User.aggregate([
-      { $match: { _id: classId } },
-      { $project: { name: 1, email: 1, role: 1 } },
-    ]).exec();
+    return updateMany(User, where, data);
   },
 
-  // StudentProfile
-  async studentProfile_findUnique(where: Record<string, unknown>) {
-    return StudentProfile.findOne(where).populate("user").lean();
+  async studentProfile_findUnique(where: unknown) {
+    return readOne(StudentProfile, where);
   },
-  async studentProfile_findMany(params: any = {}) {
-    const { where, orderBy, populate } = params;
-    let query = StudentProfile.find(where || {});
-    if (orderBy) query = query.sort(parseOrderBy(orderBy));
-    if (populate) query = query.populate(buildPopulate(populate));
-    return query.lean();
+  async studentProfile_findMany(params: unknown = {}) {
+    return readMany(StudentProfile, params);
   },
   async studentProfile_create(data: Record<string, unknown>) {
-    return StudentProfile.create(data);
+    return createOne(StudentProfile, data);
   },
   async studentProfile_count(where?: Record<string, unknown>) {
-    return StudentProfile.countDocuments(where).exec();
+    return StudentProfile.countDocuments(normalizeWhere(where)).exec();
   },
 
-  // TeacherProfile
-  async teacherProfile_findUnique(where: Record<string, unknown>) {
-    return TeacherProfile.findOne(where).populate("user").lean();
+  async teacherProfile_findUnique(where: unknown) {
+    return readOne(TeacherProfile, where);
   },
-  async teacherProfile_findMany(params: any = {}) {
-    const { where, populate } = params;
-    let query = TeacherProfile.find(where || {});
-    if (populate) query = query.populate(buildPopulate(populate));
-    return query.lean();
+  async teacherProfile_findMany(params: unknown = {}) {
+    return readMany(TeacherProfile, params);
   },
   async teacherProfile_create(data: Record<string, unknown>) {
-    return TeacherProfile.create(data);
+    return createOne(TeacherProfile, data);
   },
   async teacherProfile_count(where?: Record<string, unknown>) {
-    return TeacherProfile.countDocuments(where).exec();
+    return TeacherProfile.countDocuments(normalizeWhere(where)).exec();
   },
 
-  // ParentStudent
-  async parentStudent_upsert(where: Record<string, unknown>, createData: Record<string, unknown>, updateData: Record<string, unknown>) {
-    const existing = await ParentStudent.findOne(where).lean();
-    if (existing) {
-      return ParentStudent.findOneAndUpdate(where, updateData, { new: true }).lean();
-    }
-    return ParentStudent.create({ ...createData, ...where });
+  async parentStudent_upsert(
+    where: Record<string, unknown>,
+    createData: Record<string, unknown>,
+    updateData: Record<string, unknown>,
+  ) {
+    return upsert(ParentStudent, where, createData, updateData);
   },
-  async parentStudent_findMany(params: any = {}) {
-    const { where, populate, orderBy } = params;
-    let query = ParentStudent.find(where || {});
-    if (populate) query = query.populate(buildPopulate(populate));
-    if (orderBy) query = query.sort(parseOrderBy(orderBy));
-    return query.lean();
+  async parentStudent_findMany(params: unknown = {}) {
+    return readMany(ParentStudent, params);
   },
 
-  // AcademicYear
+  async academicYear_update(where: Record<string, unknown>, data: Record<string, unknown>) {
+    return updateOne(AcademicYear, where, data);
+  },
   async academicYear_updateMany(where: Record<string, unknown>, data: Record<string, unknown>) {
-    return AcademicYear.updateMany(where, data).exec();
+    return updateMany(AcademicYear, where, data);
   },
   async academicYear_create(data: Record<string, unknown>) {
-    return AcademicYear.create(data);
+    return createOne(AcademicYear, data);
   },
-  async academicYear_findMany(params: any = {}) {
-    const { where, orderBy, populate } = params;
-    let query = AcademicYear.find(where || {});
-    if (orderBy) query = query.sort(parseOrderBy(orderBy));
-    if (populate) query = query.populate(buildPopulate(populate));
-    return query.lean();
+  async academicYear_findMany(params: unknown = {}) {
+    return readMany(AcademicYear, params);
   },
 
-  // Class
   async class_create(data: Record<string, unknown>) {
-    return Class.create(data);
+    return createOne(Class, data);
   },
-  async class_findMany(params: any = {}) {
-    const { where, populate, orderBy } = params;
-    let query = Class.find(where || {});
-    if (populate) {
-      const pop: any[] = [];
-      for (const [key, value] of Object.entries(populate)) {
-        if (key === "_count") {
-          if (value && typeof value === "object" && "select" in value) {
-            pop.push({ path: "", options: { } });
-          }
-        } else {
-          if (value === true) pop.push(key);
-          else if (typeof value === "object") pop.push({ path: key, populate: buildPopulate(value as Record<string, boolean | string | object>) });
-        }
-      }
-      if (pop.length > 0) query = query.populate(pop);
-    }
-    if (orderBy) query = query.sort(parseOrderBy(orderBy));
-    return query.lean();
+  async class_findMany(params: unknown = {}) {
+    return readMany(Class, params);
   },
   async class_count(where?: Record<string, unknown>) {
-    return Class.countDocuments(where).exec();
+    return Class.countDocuments(normalizeWhere(where)).exec();
   },
   async class_getWithCount(classId: string) {
-    return Class.aggregate([
+    const rows = await Class.aggregate([
       { $match: { _id: classId } },
       {
         $lookup: {
-          from: "enrollments",
+          from: Enrollment.collection.collectionName,
           localField: "_id",
           foreignField: "classId",
           as: "enrollments",
         },
       },
       {
-        $project: { name: 1, section: 1, academicYearId: 1, _count: { enrollments: { $size: "$enrollments" } } },
+        $project: {
+          id: "$_id",
+          name: 1,
+          section: 1,
+          academicYearId: 1,
+          _count: { enrollments: { $size: "$enrollments" } },
+        },
       },
     ]).exec();
+    return rows;
   },
 
-  // Subject
   async subject_create(data: Record<string, unknown>) {
-    return Subject.create(data);
+    return createOne(Subject, data);
   },
-  async subject_findMany(params: any = {}) {
-    const { where, orderBy } = params;
-    let query = Subject.find(where || {});
-    if (orderBy) query = query.sort(parseOrderBy(orderBy));
-    return query.lean();
+  async subject_findMany(params: unknown = {}) {
+    return readMany(Subject, params);
   },
 
-  // ClassSubject
-  async classSubject_upsert(where: Record<string, unknown>, createData: Record<string, unknown>, updateData: Record<string, unknown>) {
-    const existing = await ClassSubject.findOne(where).lean();
-    if (existing) {
-      return ClassSubject.findOneAndUpdate(where, updateData, { new: true }).lean();
-    }
-    return ClassSubject.create({ ...createData, ...where });
+  async classSubject_upsert(
+    where: Record<string, unknown>,
+    createData: Record<string, unknown>,
+    updateData: Record<string, unknown>,
+  ) {
+    return upsert(ClassSubject, where, createData, updateData);
   },
-  async classSubject_findFirst(where: Record<string, unknown>) {
-    return ClassSubject.findOne(where).lean();
+  async classSubject_findFirst(where: unknown) {
+    return readOne(ClassSubject, where);
   },
-  async classSubject_findMany(params: any = {}) {
-    const { where, populate, orderBy } = params;
-    let query = ClassSubject.find(where || {});
-    if (populate) query = query.populate(buildPopulate(populate));
-    if (orderBy) query = query.sort(parseOrderBy(orderBy));
-    return query.lean();
+  async classSubject_findMany(params: unknown = {}) {
+    return readMany(ClassSubject, params);
   },
 
-  // Enrollment
-  async enrollment_findMany(params: any = {}) {
-    const { where, populate, select, orderBy } = params;
-    let query = Enrollment.find(where || {});
-    if (populate) query = query.populate(buildPopulate(populate));
-    if (select) query = query.select(select);
-    if (orderBy) query = query.sort(parseOrderBy(orderBy));
-    return query.lean();
+  async enrollment_findMany(params: unknown = {}) {
+    return readMany(Enrollment, params);
   },
-  async enrollment_upsert(where: Record<string, unknown>, createData: Record<string, unknown>, updateData: Record<string, unknown>) {
-    const existing = await Enrollment.findOne(where).lean();
-    if (existing) {
-      return Enrollment.findOneAndUpdate(where, updateData, { new: true }).lean();
-    }
-    return Enrollment.create({ ...createData, ...where });
+  async enrollment_upsert(
+    where: Record<string, unknown>,
+    createData: Record<string, unknown>,
+    updateData: Record<string, unknown>,
+  ) {
+    return upsert(Enrollment, where, createData, updateData);
   },
   async enrollment_count(where?: Record<string, unknown>) {
-    return Enrollment.countDocuments(where).exec();
+    return Enrollment.countDocuments(normalizeWhere(where)).exec();
   },
 
-  // AttendanceRecord
-  async attendanceRecord_findMany(params: any = {}) {
-    const { where, populate, select, orderBy } = params;
-    let query = AttendanceRecord.find(where || {});
-    if (populate) query = query.populate(buildPopulate(populate));
-    if (select) query = query.select(select);
-    if (orderBy) query = query.sort(parseOrderBy(orderBy));
-    return query.lean();
+  async attendanceRecord_findMany(params: unknown = {}) {
+    return readMany(AttendanceRecord, params);
   },
   async attendanceRecord_createMany(data: Record<string, unknown>[]) {
     return AttendanceRecord.insertMany(data);
   },
-async attendanceRecord_updateMany(data: Record<string, unknown>) {
-     return (AttendanceRecord as any).updateMany(data).exec();
-   },
+  async attendanceRecord_updateMany(where: Record<string, unknown>, data: Record<string, unknown>) {
+    return updateMany(AttendanceRecord, where, data);
+  },
   async attendanceRecord_count(where?: Record<string, unknown>) {
-    return AttendanceRecord.countDocuments(where).exec();
+    return AttendanceRecord.countDocuments(normalizeWhere(where)).exec();
   },
-  async attendanceRecord_groupBy(params: any) {
-    const { by, _count } = params;
-    const pipeline: any[] = [{ $group: { _id: {}, ...{} } }];
-    const groupStage: any = { _id: {} };
-    const countStage: any = {};
-    for (const key of by) {
-      groupStage._id[key] = `$${key}`;
-    }
-    if (_count) {
-      for (const field of Object.keys(_count)) {
-        groupStage[`_count.${field}`] = { $sum: 1 };
-      }
-    }
-    pipeline[0] = { $group: groupStage };
-    return AttendanceRecord.aggregate(pipeline).exec();
+  async attendanceRecord_groupBy(params: { by: string[] }) {
+    const groupId: Record<string, string> = {};
+    for (const key of params.by) groupId[key] = `$${key}`;
+    const rows = await AttendanceRecord.aggregate<{ _id: Record<string, unknown>; count: number }>([
+      { $group: { _id: groupId, count: { $sum: 1 } } },
+    ]).exec();
+    return mapGroupRows(rows);
   },
 
-  // Assignment
   async assignment_create(data: Record<string, unknown>) {
-    return Assignment.create(data);
+    return createOne(Assignment, data);
   },
-  async assignment_findUnique(where: Record<string, unknown>) {
-    return Assignment.findOne(where).lean();
+  async assignment_findUnique(where: unknown) {
+    return readOne(Assignment, where);
+  },
+  async assignment_findMany(params: unknown = {}) {
+    return readMany(Assignment, params);
   },
 
-  async assignment_findMany(where?: Record<string, unknown>) {
-     return Assignment.find(where || {}).lean();
-   },
-
-   // Grade
   async grade_create(data: Record<string, unknown>) {
-    return Grade.create(data);
+    return createOne(Grade, data);
   },
   async grade_createMany(data: Record<string, unknown>[]) {
     return Grade.insertMany(data);
   },
-  async grade_findMany(params: any = {}) {
-    const { where, populate, select, orderBy } = params;
-    let query = Grade.find(where || {});
-    if (populate) query = query.populate(buildPopulate(populate));
-    if (select) query = query.select(select);
-    if (orderBy) query = query.sort(parseOrderBy(orderBy));
-    return query.lean();
+  async grade_findMany(params: unknown = {}) {
+    return readMany(Grade, params);
   },
-async grade_updateMany(data: Record<string, unknown>) {
-     return (Grade as any).updateMany(data).exec();
-   },
+  async grade_updateMany(where: Record<string, unknown>, data: Record<string, unknown>) {
+    return updateMany(Grade, where, data);
+  },
+  async grade_averageByClass() {
+    const rows = await Grade.aggregate<{ _id: string; average: number; count: number }>([
+      {
+        $lookup: {
+          from: Assignment.collection.collectionName,
+          localField: "assignmentId",
+          foreignField: "_id",
+          as: "assignment",
+        },
+      },
+      { $unwind: "$assignment" },
+      {
+        $group: {
+          _id: "$assignment.classId",
+          average: {
+            $avg: {
+              $multiply: [{ $divide: ["$score", "$assignment.maxScore"] }, 100],
+            },
+          },
+          count: { $sum: 1 },
+        },
+      },
+    ]).exec();
+    return rows.map((row) => ({
+      classId: row._id,
+      average: row.average,
+      count: row.count,
+    }));
+  },
 
-  // LoginAttempt
-  async loginAttempt_findUnique(where: Record<string, unknown>) {
-    return LoginAttempt.findOne(where).lean();
+  async loginAttempt_findUnique(where: unknown) {
+    return readOne(LoginAttempt, where);
   },
-  async loginAttempt_upsert(where: Record<string, unknown>, createData: Record<string, unknown>, updateData: Record<string, unknown>) {
-    const existing = await LoginAttempt.findOne(where).lean();
-    if (existing) {
-      return LoginAttempt.findOneAndUpdate(where, updateData, { new: true }).lean();
-    }
-    return LoginAttempt.create({ ...createData, ...where });
+  async loginAttempt_upsert(
+    where: Record<string, unknown>,
+    createData: Record<string, unknown>,
+    updateData: Record<string, unknown>,
+  ) {
+    return upsert(LoginAttempt, where, createData, updateData);
   },
   async loginAttempt_update(where: Record<string, unknown>, data: Record<string, unknown>) {
-    return LoginAttempt.findOneAndUpdate(where, data, { new: true }).lean();
+    return updateOne(LoginAttempt, where, data);
   },
   async loginAttempt_deleteMany(where: Record<string, unknown>) {
-    return LoginAttempt.deleteMany(where).exec();
-  },
-
-  // Transaction
-  async $transaction(fn: (tx: any) => Promise<any>) {
-    return runTransaction(fn);
+    return LoginAttempt.deleteMany(normalizeWhere(where)).exec();
   },
 };
 
-export { db };
+function withConnection<T extends object>(methods: T): T {
+  return new Proxy(methods, {
+    get(target, prop, receiver) {
+      const value = Reflect.get(target, prop, receiver);
+      if (typeof value !== "function") return value;
+      return async (...args: unknown[]) => {
+        await connectDB();
+        return value.apply(target, args);
+      };
+    },
+  });
+}
+
+export const db = withConnection(api);
+export { attemptsIncrement };
 export default db;

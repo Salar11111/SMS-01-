@@ -3,6 +3,7 @@ import Link from "next/link";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/prisma";
 import { ROLE_HOME } from "@/lib/rbac";
+import { PortalLink } from "@/components/portal-transition";
 import { Badge, SectionLabel } from "@/components/ui";
 import {
   CalendarCheck,
@@ -19,7 +20,7 @@ import {
 
 export default async function HomePage() {
   const session = await auth();
-  if (session?.user?.role) {
+  if (session?.user?.id && session.user.role) {
     redirect(ROLE_HOME[session.user.role]);
   }
 
@@ -61,9 +62,9 @@ export default async function HomePage() {
               Stories
             </a>
           </nav>
-          <Link href="/login" className="btn-primary">
+          <PortalLink href="/login" className="btn-primary">
             Enter Portal <ArrowRight className="h-4 w-4" />
-          </Link>
+          </PortalLink>
         </div>
       </header>
 
@@ -89,9 +90,9 @@ export default async function HomePage() {
               workspace — so every child is supported, never overlooked.
             </p>
             <div className="mt-8 flex flex-wrap gap-4">
-              <Link href="/login" className="btn-primary px-7 py-3 text-base">
+              <PortalLink href="/login" className="btn-primary px-7 py-3 text-base">
                 Enter the portal <ArrowRight className="h-4 w-4" />
-              </Link>
+              </PortalLink>
               <a href="#features" className="btn-outline px-7 py-3 text-base">
                 Explore features
               </a>
@@ -408,12 +409,12 @@ export default async function HomePage() {
                 welcoming place. Step through the portal and feel the difference.
               </p>
               <div className="mt-8 flex flex-col items-center gap-4 sm:flex-row sm:justify-center">
-                <Link
+                <PortalLink
                   href="/login"
                   className="inline-flex items-center gap-2 rounded-xl bg-white px-8 py-3.5 text-base font-semibold text-[var(--color-primary)] shadow-lg transition-all hover:shadow-xl hover:-translate-y-0.5"
                 >
                   Enter Portal <ArrowRight className="h-4 w-4" />
-                </Link>
+                </PortalLink>
               </div>
               <p className="mt-8 text-xs font-bold uppercase tracking-[0.2em] text-white/60">
                 Secure · Compliant · Always Available

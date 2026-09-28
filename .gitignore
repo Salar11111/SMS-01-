@@ -42,10 +42,6 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
-# sqlite
-*.db
-*.db-journal
-
 # editor
 .vscode/
 .idea/
@@ -61,4 +57,8 @@ next-env.d.ts
 
 # env
 *.local
+.env.local
+
+# mongodb
+*.mongodb
 

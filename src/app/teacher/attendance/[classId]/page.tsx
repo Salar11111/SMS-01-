@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import { auth } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
+import { db } from "@/lib/prisma";
 import { saveAttendance } from "@/lib/actions/teacher";
 import { PageHeader, Panel, SubmitButton } from "@/components/ui";
 import { classLabel, startOfDay, dateInputValue, formatDate } from "@/lib/utils";
@@ -12,32 +12,21 @@ export default async function TeacherAttendanceClassPage({
 }) {
   const { classId } = await params;
   const session = await auth();
-  const teacher = await prisma.teacherProfile.findUnique({
+  const teacher = await db.teacherProfile_findUnique({
     where: { userId: session!.user.id },
   });
   if (!teacher) notFound();
 
-  const owned = await prisma.classSubject.findFirst({
-    where: { teacherProfileId: teacher.id, classId },
-  });
+  const owned = await db.classSubject_findFirst({ teacherProfileId: teacher.id, classId });
   if (!owned) notFound();
 
-  const klass = await prisma.class.findUnique({ where: { id: classId } });
+  const klass = (await db.class_getWithCount(classId))[0];
   if (!klass) notFound();
 
   const today = startOfDay();
-  const enrollments = await prisma.enrollment.findMany({
+  const enrollments = await db.enrollment_findMany({
     where: { classId },
-    include: {
-      student: {
-        include: {
-          user: true,
-          attendance: {
-            where: { classId, date: today },
-          },
-        },
-      },
-    },
+    populate: { student: { user: true, attendance: { where: { classId, date: today } } } },
     orderBy: { student: { user: { name: "asc" } } },
   });
 

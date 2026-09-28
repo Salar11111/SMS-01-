@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { auth } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
+import { db } from "@/lib/prisma";
 import { PageHeader, Panel, DataTable, EmptyState, SectionLabel, Badge } from "@/components/ui";
 import { classLabel } from "@/lib/utils";
 import { ArrowRight, CalendarCheck, FileSignature } from "lucide-react";
@@ -9,20 +9,12 @@ export default async function TeacherHomePage() {
   const session = await auth();
   const firstName = session?.user?.name?.split(" ")[0] || "Teacher";
 
-  const teacher = await prisma.teacherProfile.findUnique({
+  const teacher = await db.teacherProfile_findUnique({
     where: { userId: session!.user.id },
-    include: {
-      classSubjects: {
-        include: {
-          class: { include: { _count: { select: { enrollments: true } } } },
-          subject: true,
-        },
-      },
-    },
   });
 
   const rows =
-    teacher?.classSubjects.map((cs) => [
+    teacher?.classSubjects.map((cs: any) => [
       classLabel(cs.class.name, cs.class.section),
       cs.subject.name,
       String(cs.class._count.enrollments),

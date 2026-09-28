@@ -1,13 +1,12 @@
 import { auth } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
+import { db } from "@/lib/prisma";
 import { PageHeader, Panel, DataTable, EmptyState } from "@/components/ui";
 import { classLabel, formatDate } from "@/lib/utils";
 
 export default async function ParentGradesPage() {
   const session = await auth();
-  const links = await prisma.parentStudent.findMany({
+  const links = await db.parentStudent_findMany({
     where: { parentId: session!.user.id },
-    select: { studentId: true },
   });
   const studentIds = links.map((l) => l.studentId);
   if (studentIds.length === 0) {
@@ -21,12 +20,9 @@ export default async function ParentGradesPage() {
     );
   }
 
-  const grades = await prisma.grade.findMany({
+  const grades = await db.grade_findMany({
     where: { studentProfileId: { in: studentIds } },
-    include: {
-      student: { include: { user: true } },
-      assignment: { include: { subject: true, class: true } },
-    },
+    populate: { student: { user: true }, assignment: { subject: true, class: true } },
     orderBy: { assignment: { createdAt: "desc" } },
   });
 

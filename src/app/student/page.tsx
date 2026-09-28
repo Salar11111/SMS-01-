@@ -1,5 +1,5 @@
 import { auth } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
+import { db } from "@/lib/prisma";
 import { PageHeader, Panel, DataTable, Stat, EmptyState, SectionLabel, Badge } from "@/components/ui";
 import { classLabel } from "@/lib/utils";
 import { CalendarCheck, ClipboardList, GraduationCap, Award } from "lucide-react";
@@ -8,13 +8,8 @@ export default async function StudentHomePage() {
   const session = await auth();
   const firstName = session?.user?.name?.split(" ")[0] || "Student";
 
-  const profile = await prisma.studentProfile.findUnique({
+  const profile = await db.studentProfile_findUnique({
     where: { userId: session!.user.id },
-    include: {
-      enrollments: { include: { class: { include: { academicYear: true } } } },
-      attendance: true,
-      grades: true,
-    },
   });
 
   if (!profile) {
@@ -22,21 +17,21 @@ export default async function StudentHomePage() {
   }
 
   const present = profile.attendance.filter(
-    (a) => a.status === "PRESENT" || a.status === "LATE",
-  ).length;
-  const rate =
-    profile.attendance.length === 0
-      ? "—"
-      : `${Math.round((present / profile.attendance.length) * 100)}%`;
+(a: any) => a.status === "PRESENT" || a.status === "LATE",
+   ).length;
+   const rate =
+     profile.attendance.length === 0
+       ? "—"
+       : `${Math.round((present / profile.attendance.length) * 100)}%`;
 
-  const avgScore =
-    profile.grades.length === 0
-      ? "—"
-      : `${Math.round(
-          (profile.grades.reduce((sum, g) => sum + g.score, 0) /
-            profile.grades.length) *
-            100,
-        )}%`;
+   const avgScore =
+     profile.grades.length === 0
+       ? "—"
+       : `${Math.round(
+           (profile.grades.reduce((sum: any, g: any) => sum + g.score, 0) /
+             profile.grades.length) *
+             100,
+         )}%`;
 
   return (
     <div>
@@ -78,10 +73,10 @@ export default async function StudentHomePage() {
         </div>
         <DataTable
           headers={["Class", "Year"]}
-          rows={profile.enrollments.map((e) => [
-            classLabel(e.class.name, e.class.section),
-            e.class.academicYear.name,
-          ])}
+rows={profile.enrollments.map((e: any) => [
+             classLabel(e.class.name, e.class.section),
+             e.class.academicYear.name,
+           ])}
         />
       </Panel>
     </div>

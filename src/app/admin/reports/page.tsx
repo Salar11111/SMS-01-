@@ -1,20 +1,14 @@
-import { prisma } from "@/lib/prisma";
+import { db } from "@/lib/prisma";
 import { PageHeader, Panel, DataTable, Stat } from "@/components/ui";
 import { classLabel } from "@/lib/utils";
 
 export default async function AdminReportsPage() {
   const [classes, attendanceGroups] = await Promise.all([
-    prisma.class.findMany({
-      include: {
-        academicYear: true,
-        _count: { select: { enrollments: true, attendance: true } },
-      },
+    db.class_findMany({
+      populate: { academicYear: true, _count: { select: { enrollments: true, attendance: true } } },
       orderBy: { name: "asc" },
     }),
-    prisma.attendanceRecord.groupBy({
-      by: ["classId", "status"],
-      _count: true,
-    }),
+    db.attendanceRecord_groupBy({ by: ["classId", "status"], _count: true }),
   ]);
 
   const byClass = new Map<

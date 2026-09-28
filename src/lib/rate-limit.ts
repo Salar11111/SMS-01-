@@ -1,38 +1,32 @@
-import { prisma } from "@/lib/prisma";
+import { db } from "@/lib/prisma";
 
 const MAX_ATTEMPTS = 5;
 const LOCK_DURATION_MS = 15 * 60 * 1000;
 
 export async function isLoginBlocked(key: string): Promise<boolean> {
-  const attempt = await prisma.loginAttempt.findUnique({ where: { key } });
+  const attempt = await db.loginAttempt_findUnique({ key });
   if (!attempt) return false;
   if (attempt.attempts < MAX_ATTEMPTS) return false;
   if (!attempt.lockedAt) return false;
   const expired = Date.now() - attempt.lockedAt.getTime() >= LOCK_DURATION_MS;
   if (expired) {
-    await prisma.loginAttempt.update({
-      where: { id: attempt.id },
-      data: { attempts: 0, lockedAt: null },
-    });
+    await db.loginAttempt_update({ id: attempt.id }, { attempts: 0, lockedAt: null });
     return false;
   }
   return true;
 }
 
 export async function recordLoginFailure(key: string): Promise<void> {
-  const attempt = await prisma.loginAttempt.upsert({
-    where: { key },
-    create: { key, attempts: 1 },
-    update: { attempts: { increment: 1 } },
-  });
+  const attempt = await db.loginAttempt_upsert(
+    { key },
+    { key, attempts: 1 },
+    { attempts: { increment: 1 } }
+  );
   if (attempt.attempts >= MAX_ATTEMPTS && !attempt.lockedAt) {
-    await prisma.loginAttempt.update({
-      where: { id: attempt.id },
-      data: { lockedAt: new Date() },
-    });
+    await db.loginAttempt_update({ id: attempt.id }, { lockedAt: new Date() });
   }
 }
 
 export async function resetLoginAttempts(key: string): Promise<void> {
-  await prisma.loginAttempt.deleteMany({ where: { key } });
+  await db.loginAttempt_deleteMany({ key });
 }

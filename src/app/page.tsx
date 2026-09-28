@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { auth } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
+import { db } from "@/lib/prisma";
 import { ROLE_HOME } from "@/lib/rbac";
 import { Badge, SectionLabel } from "@/components/ui";
 import {
@@ -24,9 +24,9 @@ export default async function HomePage() {
   }
 
   const [classes, teachers, students] = await Promise.all([
-    prisma.class.count(),
-    prisma.teacherProfile.count(),
-    prisma.studentProfile.count(),
+    db.class_count(),
+    db.teacherProfile_count(),
+    db.studentProfile_count(),
   ]);
 
   return (

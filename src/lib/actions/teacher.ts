@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { prisma } from "@/lib/prisma";
+import { db } from "@/lib/prisma";
 import { requireTeacherProfile, assertTeacherOwnsClass, assertTeacherOwnsAssignment } from "@/lib/authz";
 import { startOfDay } from "@/lib/utils";
 import { parseFormData } from "@/lib/validation";
@@ -34,31 +34,21 @@ export async function saveAttendance(formData: FormData) {
   await assertTeacherOwnsClass(teacher.id, parsed.classId);
   const date = startOfDay(parsed.date);
 
-  const enrollments = await prisma.enrollment.findMany({
-    where: { classId: parsed.classId },
-    select: { studentProfileId: true },
-  });
+  const enrollments = await db.enrollment_findMany({ where: { classId: parsed.classId }, select: ["studentProfileId"] });
   if (enrollments.length === 0) {
     revalidatePath(`/teacher/attendance/${parsed.classId}`);
     return;
   }
 
-  const existing = await prisma.attendanceRecord.findMany({
-    where: {
-      classId: parsed.classId,
-      date,
-      studentProfileId: { in: enrollments.map((e) => e.studentProfileId) },
-    },
-    select: { studentProfileId: true },
-  });
-  const existingIds = new Set(existing.map((r) => r.studentProfileId));
+  const existing = await db.attendanceRecord_findMany({ where: { classId: parsed.classId, date, studentProfileId: { in: enrollments.map((e: any) => e.studentProfileId) } }, select: ["studentProfileId"] });
+  const existingIds = new Set(existing.map((r: any) => r.studentProfileId));
 
   const statusOf = (studentProfileId: string) =>
     parsed.statuses[`status_${studentProfileId}`] ?? "PRESENT";
 
   const toCreate = enrollments
-    .filter((e) => !existingIds.has(e.studentProfileId))
-    .map((e) => ({
+    .filter((e: any) => !existingIds.has(e.studentProfileId))
+    .map((e: any) => ({
       studentProfileId: e.studentProfileId,
       classId: parsed.classId,
       date,
@@ -66,21 +56,14 @@ export async function saveAttendance(formData: FormData) {
       markedById: session.user.id,
     }));
 
-  await prisma.$transaction(async (tx) => {
-    if (toCreate.length > 0) await tx.attendanceRecord.createMany({ data: toCreate });
+  await db.$transaction(async (tx) => {
+    if (toCreate.length > 0) await db.attendanceRecord_createMany(toCreate);
     await Promise.all(
       enrollments
-        .filter((e) => existingIds.has(e.studentProfileId))
-        .map((e) =>
-          tx.attendanceRecord.updateMany({
-            where: {
-              studentProfileId: e.studentProfileId,
-              classId: parsed.classId,
-              date,
-            },
-            data: { status: statusOf(e.studentProfileId), markedById: session.user.id },
-          }),
-        ),
+        .filter((e: any) => existingIds.has(e.studentProfileId))
+        .map((e: any) =>
+          db.attendanceRecord_updateMany({ studentProfileId: e.studentProfileId, classId: parsed.classId, date, status: statusOf(e.studentProfileId), markedById: session.user.id })
+        )
     );
   });
 
@@ -92,19 +75,19 @@ export async function createAssignment(formData: FormData) {
   const { teacher } = await requireTeacherProfile();
   const parsed = parseFormData(createAssignmentSchema, Object.fromEntries(formData));
 
-  const link = await prisma.classSubject.findFirst({
-    where: { teacherProfileId: teacher.id, classId: parsed.classId, subjectId: parsed.subjectId },
+  const link = await db.classSubject_findFirst({
+    teacherProfileId: teacher.id,
+    classId: parsed.classId,
+    subjectId: parsed.subjectId,
   });
   if (!link) throw new Error("Not assigned to this class/subject");
 
-  await prisma.assignment.create({
-    data: {
-      title: parsed.title,
-      classId: parsed.classId,
-      subjectId: parsed.subjectId,
-      maxScore: parsed.maxScore,
-      dueDate: parsed.dueDate ?? null,
-    },
+  await db.assignment_create({
+    title: parsed.title,
+    classId: parsed.classId,
+    subjectId: parsed.subjectId,
+    maxScore: parsed.maxScore,
+    dueDate: parsed.dueDate ?? null,
   });
 
   revalidatePath("/teacher/grades");
@@ -120,27 +103,21 @@ export async function saveGrades(formData: FormData) {
 
   const assignment = await assertTeacherOwnsAssignment(teacher.id, parsed.assignmentId);
 
-  const enrollments = await prisma.enrollment.findMany({
-    where: { classId: assignment.classId },
-    select: { studentProfileId: true },
-  });
+  const enrollments = await db.enrollment_findMany({ where: { classId: assignment.classId }, select: ["studentProfileId"] });
 
-  const existing = await prisma.grade.findMany({
-    where: {
-      assignmentId: assignment.id,
-      studentProfileId: { in: enrollments.map((e) => e.studentProfileId) },
-    },
-    select: { studentProfileId: true },
+  const existing = await db.grade_findMany({
+    where: { assignmentId: assignment.id, studentProfileId: { in: enrollments.map((e: any) => e.studentProfileId) } },
+    select: ["studentProfileId"]
   });
-  const existingIds = new Set(existing.map((g) => g.studentProfileId));
+  const existingIds = new Set(existing.map((g: any) => g.studentProfileId));
 
   const scores = enrollments
-    .map((e) => ({ studentProfileId: e.studentProfileId, raw: parsed.scores[`score_${e.studentProfileId}`] }))
-    .filter((s): s is { studentProfileId: string; raw: string } => Boolean(s.raw));
+    .map((e: any) => ({ studentProfileId: e.studentProfileId, raw: parsed.scores[`score_${e.studentProfileId}`] }))
+    .filter((s: any) => Boolean(s.raw));
 
   const toCreate = scores
-    .filter((s) => !existingIds.has(s.studentProfileId))
-    .map((s) => {
+    .filter((s: any) => !existingIds.has(s.studentProfileId))
+    .map((s: any) => {
       const score = Number(s.raw);
       if (score < 0 || score > assignment.maxScore) {
         throw new Error(`Score out of range (0–${assignment.maxScore})`);
@@ -148,24 +125,18 @@ export async function saveGrades(formData: FormData) {
       return { assignmentId: assignment.id, studentProfileId: s.studentProfileId, score };
     });
 
-  await prisma.$transaction(async (tx) => {
-    if (toCreate.length > 0) await tx.grade.createMany({ data: toCreate });
+  await db.$transaction(async (tx) => {
+    if (toCreate.length > 0) await db.grade_createMany(toCreate);
     await Promise.all(
       scores
-        .filter((s) => existingIds.has(s.studentProfileId))
-        .map((s) => {
+        .filter((s: any) => existingIds.has(s.studentProfileId))
+        .map((s: any) => {
           const score = Number(s.raw);
           if (score < 0 || score > assignment.maxScore) {
             throw new Error(`Score out of range (0–${assignment.maxScore})`);
           }
-          return tx.grade.updateMany({
-            where: {
-              assignmentId: assignment.id,
-              studentProfileId: s.studentProfileId,
-            },
-            data: { score },
-          });
-        }),
+           return db.grade_updateMany({ assignmentId: assignment.id, studentProfileId: s.studentProfileId, score });
+        })
     );
   });
 

@@ -6,7 +6,7 @@
 
 1. Vercel account
 2. Git repository (GitHub, GitLab, or Bitbucket)
-3. Database provider account (see options below)
+3. MongoDB database instance (MongoDB Atlas recommended)
 
 ### Step 1: Prepare Environment Variables
 
@@ -14,77 +14,17 @@ Create these in Vercel Dashboard → Settings → Environment Variables:
 
 | Variable | Description | Example |
 |----------|-------------|---------|
-| `DATABASE_URL` | Database connection string | `libsql://your-db.turso.io?authToken=...` |
+| `MONGODB_URI` | MongoDB connection string | `mongodb+srv://user:pass@cluster.xxxxx.mongodb.net/school-management` |
 | `AUTH_SECRET` | NextAuth secret (32+ chars) | `openssl rand -base64 32` |
 | `NEXTAUTH_URL` | Production URL | `https://your-app.vercel.app` |
 
-### Step 2: Choose Database Provider
+### Step 2: Set Up MongoDB Atlas
 
-#### Option A: Turso (SQLite - Recommended for Simplicity)
-
-```bash
-# Install Turso CLI
-curl -sSfL https://get.tur.so/install.sh | bash
-
-# Create database
-turso db create school-management
-
-# Get connection URL
-turso db show school-management --url
-turso db tokens create school-management
-```
-
-Update `.env`:
-```
-DATABASE_URL="libsql://school-management-you.turso.io?authToken=your-token"
-```
-
-Update `prisma/schema.prisma`:
-```prisma
-datasource db {
-  provider = "libsql"
-  url      = env("DATABASE_URL")
-}
-```
-
-Add `@libsql/client`:
-```bash
-npm install @libsql/client
-npm install -D @types/libsql
-```
-
-#### Option B: PlanetScale (MySQL)
-
-1. Create database at https://planetscale.com
-2. Get connection string from "Connect" → "Prisma"
-3. Update `prisma/schema.prisma`:
-```prisma
-datasource db {
-  provider = "mysql"
-  url      = env("DATABASE_URL")
-}
-```
-4. Run `npm run db:migrate` (creates migration files)
-5. Run `npx prisma db push` for initial schema
-
-#### Option C: Neon (PostgreSQL)
-
-1. Create project at https://neon.tech
-2. Get connection string from dashboard
-3. Update `prisma/schema.prisma`:
-```prisma
-datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
-}
-```
-4. Run `npm run db:migrate`
-
-#### Option D: Supabase (PostgreSQL)
-
-1. Create project at https://supabase.com
-2. Get connection string from Settings → Database
-3. Same as Neon setup
+1. Create a free cluster at https://mongodb.com/atlas
+2. Create a database user
+3. Get connection string from Atlas Dashboard → Connect → Connect with Node.js
+4. Whitelist Vercel IPs (or allow all IPs for simplicity)
+5. Create database named `school-management`
 
 ### Step 3: Deploy to Vercel
 
@@ -104,15 +44,15 @@ Or connect via Vercel Dashboard:
 2. Configure Environment Variables
 3. Deploy
 
-### Step 4: Run Migrations on Production
+### Step 4: Seed the Database
+
+After deployment, run the seed script locally or via Vercel job:
 
 ```bash
-# Using Vercel CLI
-vercel env pull .env.production
-npx prisma migrate deploy
+npm run db:seed
 ```
 
-Or use GitHub Actions for automatic migrations on deploy.
+Or use a GitHub Actions workflow for automatic seeding.
 
 ## Docker Deployment
 
@@ -121,39 +61,27 @@ Or use GitHub Actions for automatic migrations on deploy.
 ```dockerfile
 FROM node:20-alpine AS base
 
-# Install dependencies only when needed
-FROM base AS deps
 RUN apk add --no-cache libc6-compat
 WORKDIR /app
 COPY package.json package-lock.json* ./
 RUN npm ci
 
-# Generate Prisma Client
-FROM base AS generator
-WORKDIR /app
-COPY --from=deps /app/node_modules ./node_modules
-COPY prisma ./prisma
-RUN npx prisma generate
-
-# Build
 FROM base AS builder
 WORKDIR /app
-COPY --from=deps /app/node_modules ./node_modules
-COPY --from=generator /app/node_modules/.prisma ./node_modules/.prisma
+COPY --from=base /app/node_modules ./node_modules
 COPY . .
 RUN npm run build
 
-# Production
 FROM base AS runner
 WORKDIR /app
 ENV NODE_ENV=production
 COPY --from=builder /app/public ./public
 COPY --from=builder /app/.next/standalone ./
 COPY --from=builder /app/.next/static ./.next/static
-COPY --from=builder /app/prisma ./prisma
+COPY --from=builder /app/node_modules ./node_modules
 
 EXPOSE 3000
-CMD ["node", "server.js"]
+CMD ["node", ".next/standalone/server.js"]
 ```
 
 ### docker-compose.yml
@@ -166,37 +94,35 @@ services:
     ports:
       - "3000:3000"
     environment:
-      - DATABASE_URL=postgresql://user:pass@db:5432/school
+      - MONGODB_URI=mongodb://mongo:27017/school-management
       - AUTH_SECRET=your-secret
       - NEXTAUTH_URL=http://localhost:3000
     depends_on:
-      - db
+      - mongo
 
-  db:
-    image: postgres:16-alpine
-    environment:
-      - POSTGRES_USER=user
-      - POSTGRES_PASSWORD=pass
-      - POSTGRES_DB=school
+  mongo:
+    image: mongo:7
+    ports:
+      - "27017:27017"
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - mongo_data:/data/db
 
 volumes:
-  postgres_data:
+  mongo_data:
 ```
 
 ## Environment-Specific Configurations
 
 ### Development (.env)
 ```env
-DATABASE_URL="file:./dev.db"
+MONGODB_URI="mongodb://localhost:27017/school-management"
 AUTH_SECRET="dev-secret-change-in-production"
 NEXTAUTH_URL="http://localhost:3000"
 ```
 
 ### Production (.env.production)
 ```env
-DATABASE_URL="your-production-db-url"
+MONGODB_URI="your-production-mongodb-uri"
 AUTH_SECRET="strong-random-secret-32-chars-min"
 NEXTAUTH_URL="https://your-domain.com"
 ```
@@ -221,9 +147,6 @@ jobs:
           node-version: '20'
           cache: 'npm'
       - run: npm ci
-      - run: npm run db:migrate
-        env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
       - run: npm run build
       - uses: amondnet/vercel-action@v25
         with:
@@ -236,7 +159,7 @@ jobs:
 ## Post-Deployment Checklist
 
 - [ ] Verify all environment variables set in Vercel
-- [ ] Run database migrations on production
+- [ ] Run database seed (npm run db:seed)
 - [ ] Test authentication flow
 - [ ] Verify all role dashboards load correctly
 - [ ] Check dark/light mode toggle
@@ -248,15 +171,11 @@ jobs:
 
 ## Troubleshooting
 
-### Prisma Client Not Generated
-```bash
-npx prisma generate
-```
-
-### Database Connection Issues
-- Verify `DATABASE_URL` format
-- Check firewall/network rules
-- Ensure database accepts connections from Vercel IPs
+### MongoDB Connection Issues
+- Verify `MONGODB_URI` format
+- Check Atlas IP whitelist
+- Ensure database user has correct permissions
+- Check connection string includes correct database name
 
 ### NextAuth Errors
 - Verify `AUTH_SECRET` is set and matches
@@ -267,3 +186,4 @@ npx prisma generate
 - Run `npm run build` locally first
 - Check TypeScript errors
 - Verify all imports resolve correctly
+- Ensure MONGODB_URI is set during build

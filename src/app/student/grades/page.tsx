@@ -1,22 +1,18 @@
 import { auth } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
+import { db } from "@/lib/prisma";
 import { PageHeader, Panel, DataTable, EmptyState } from "@/components/ui";
 import { classLabel, formatDate } from "@/lib/utils";
 
 export default async function StudentGradesPage() {
   const session = await auth();
-  const profile = await prisma.studentProfile.findUnique({
+  const profile = await db.studentProfile_findUnique({
     where: { userId: session!.user.id },
   });
   if (!profile) return <EmptyState message="Student profile not found." />;
 
-  const grades = await prisma.grade.findMany({
+  const grades = await db.grade_findMany({
     where: { studentProfileId: profile.id },
-    include: {
-      assignment: {
-        include: { subject: true, class: true },
-      },
-    },
+    populate: { assignment: { subject: true, class: true } },
     orderBy: { assignment: { createdAt: "desc" } },
   });
 

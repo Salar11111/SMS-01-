@@ -1,5 +1,5 @@
 import { auth } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
+import { db } from "@/lib/prisma";
 import type { AppRole } from "@/lib/rbac";
 
 export class UnauthorizedError extends Error {
@@ -30,23 +30,19 @@ export async function requireRole(...roles: AppRole[]) {
 
 export async function requireTeacherProfile() {
   const session = await requireRole("TEACHER");
-  const teacher = await prisma.teacherProfile.findUnique({
-    where: { userId: session.user.id },
-  });
+  const teacher = await db.teacherProfile_findUnique({ userId: session.user.id });
   if (!teacher) throw new Error("Teacher profile missing");
   return { session, teacher };
 }
 
 export async function assertTeacherOwnsClass(teacherProfileId: string, classId: string) {
-  const link = await prisma.classSubject.findFirst({
-    where: { teacherProfileId, classId },
-  });
+  const link = await db.classSubject_findFirst({ teacherProfileId, classId });
   if (!link) throw new Error("Not assigned to this class");
   return link;
 }
 
 export async function assertTeacherOwnsAssignment(teacherProfileId: string, assignmentId: string) {
-  const assignment = await prisma.assignment.findUnique({ where: { id: assignmentId } });
+  const assignment = await db.assignment_findUnique({ id: assignmentId });
   if (!assignment) throw new Error("Assignment not found");
   await assertTeacherOwnsClass(teacherProfileId, assignment.classId);
   return assignment;

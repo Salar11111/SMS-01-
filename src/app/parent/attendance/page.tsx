@@ -1,13 +1,12 @@
 import { auth } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
+import { db } from "@/lib/prisma";
 import { PageHeader, Panel, DataTable, EmptyState } from "@/components/ui";
 import { classLabel, formatDate } from "@/lib/utils";
 
 export default async function ParentAttendancePage() {
   const session = await auth();
-  const links = await prisma.parentStudent.findMany({
+  const links = await db.parentStudent_findMany({
     where: { parentId: session!.user.id },
-    select: { studentId: true },
   });
   const studentIds = links.map((l) => l.studentId);
   if (studentIds.length === 0) {
@@ -21,12 +20,9 @@ export default async function ParentAttendancePage() {
     );
   }
 
-  const records = await prisma.attendanceRecord.findMany({
+  const records = await db.attendanceRecord_findMany({
     where: { studentProfileId: { in: studentIds } },
-    include: {
-      student: { include: { user: true } },
-      class: true,
-    },
+    populate: { student: { user: true }, class: true },
     orderBy: { date: "desc" },
   });
 

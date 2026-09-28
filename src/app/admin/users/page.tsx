@@ -1,19 +1,13 @@
-import { prisma } from "@/lib/prisma";
+import { db } from "@/lib/prisma";
 import { createUser } from "@/lib/actions/admin";
 import { PageHeader, Panel, DataTable, Field, SubmitButton } from "@/components/ui";
 import { formatRole, type AppRole } from "@/lib/rbac";
 
 export default async function AdminUsersPage() {
-  const users = await prisma.user.findMany({
+  const users = await db.user_findMany({
     orderBy: { createdAt: "desc" },
-    select: {
-      id: true,
-      name: true,
-      email: true,
-      role: true,
-      studentProfile: { select: { studentId: true } },
-      teacherProfile: { select: { id: true } },
-    },
+    populate: { studentProfile: { studentId: true }, teacherProfile: { id: true } },
+    select: { id: true, name: true, email: true, role: true },
   });
 
   return (

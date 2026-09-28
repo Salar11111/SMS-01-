@@ -1,4 +1,4 @@
-import { prisma } from "@/lib/prisma";
+import { db } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
 import { PageHeader, Panel, Stat, SectionLabel, Badge } from "@/components/ui";
 import { Users, School, CalendarCheck, ClipboardList, ArrowRight, Clock } from "lucide-react";
@@ -7,12 +7,12 @@ import Link from "next/link";
 export default async function AdminHomePage() {
   const session = await auth();
   const [users, classes, enrollments, attendance, teachers, students] = await Promise.all([
-    prisma.user.count(),
-    prisma.class.count(),
-    prisma.enrollment.count(),
-    prisma.attendanceRecord.count(),
-    prisma.teacherProfile.count(),
-    prisma.studentProfile.count(),
+    db.user_count(),
+    db.class_count(),
+    db.enrollment_count(),
+    db.attendanceRecord_count(),
+    db.teacherProfile_count(),
+    db.studentProfile_count(),
   ]);
 
   const firstName = session?.user?.name?.split(" ")[0] || "Admin";

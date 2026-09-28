@@ -1,4 +1,4 @@
-import { prisma } from "@/lib/prisma";
+import { db } from "@/lib/prisma";
 import {
   createAcademicYear,
   createClass,
@@ -10,18 +10,18 @@ import { classLabel } from "@/lib/utils";
 
 export default async function AdminClassesPage() {
   const [years, classes, subjects, teachers, assignments] = await Promise.all([
-    prisma.academicYear.findMany({ orderBy: { name: "desc" } }),
-    prisma.class.findMany({
-      include: { academicYear: true, _count: { select: { enrollments: true } } },
+    db.academicYear_findMany({ orderBy: { name: "desc" } }),
+    db.class_findMany({
+      populate: { academicYear: true, _count: { select: { enrollments: true } } },
       orderBy: [{ name: "asc" }, { section: "asc" }],
     }),
-    prisma.subject.findMany({ orderBy: { name: "asc" } }),
-    prisma.teacherProfile.findMany({ include: { user: true } }),
-    prisma.classSubject.findMany({
-      include: {
+    db.subject_findMany({ orderBy: { name: "asc" } }),
+    db.teacherProfile_findMany({ populate: { user: true } }),
+    db.classSubject_findMany({
+      populate: {
         class: true,
         subject: true,
-        teacher: { include: { user: true } },
+        teacher: { user: true },
       },
     }),
   ]);

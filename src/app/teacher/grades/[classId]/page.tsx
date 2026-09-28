@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import { auth } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
+import { db } from "@/lib/prisma";
 import { createAssignment, saveGrades } from "@/lib/actions/teacher";
 import { PageHeader, Panel, Field, SubmitButton, DataTable } from "@/components/ui";
 import { classLabel, formatDate } from "@/lib/utils";
@@ -12,33 +12,30 @@ export default async function TeacherGradebookPage({
 }) {
   const { classId } = await params;
   const session = await auth();
-  const teacher = await prisma.teacherProfile.findUnique({
+  const teacher = await db.teacherProfile_findUnique({
     where: { userId: session!.user.id },
   });
   if (!teacher) notFound();
 
-  const subjects = await prisma.classSubject.findMany({
+  const subjects = await db.classSubject_findMany({
     where: { teacherProfileId: teacher.id, classId },
-    include: { subject: true, class: true },
+    populate: { subject: true, class: true },
   });
   if (subjects.length === 0) notFound();
 
   const klass = subjects[0].class;
   const [enrollments, assignments] = await Promise.all([
-    prisma.enrollment.findMany({
+    db.enrollment_findMany({
       where: { classId },
-      include: { student: { include: { user: true } } },
+      populate: { student: { user: true } },
       orderBy: { student: { user: { name: "asc" } } },
     }),
-    prisma.assignment.findMany({
+    db.assignment_findMany({
       where: {
         classId,
         subjectId: { in: subjects.map((s) => s.subjectId) },
       },
-      include: {
-        subject: true,
-        grades: true,
-      },
+      populate: { subject: true, grades: true },
       orderBy: { createdAt: "desc" },
     }),
   ]);
@@ -76,10 +73,10 @@ export default async function TeacherGradebookPage({
         </form>
       </Panel>
 
-      {assignments.map((a) => (
-        <Panel
-          key={a.id}
-          title={`${a.title} · ${a.subject.name} (max ${a.maxScore})`}
+{assignments.map((a: any) => (
+         <Panel
+           key={a.id}
+           title={`${a.title} · ${a.subject.name} (max ${a.maxScore})`}
           action={
             a.dueDate ? (
               <span className="text-sm text-[var(--color-muted)]">Due {formatDate(a.dueDate)}</span>
@@ -97,8 +94,8 @@ export default async function TeacherGradebookPage({
                   </tr>
                 </thead>
                 <tbody>
-                  {enrollments.map((e) => {
-                    const existing = a.grades.find((g) => g.studentProfileId === e.studentProfileId);
+{enrollments.map((e: any) => {
+                     const existing = a.grades.find((g: any) => g.studentProfileId === e.studentProfileId);
                     return (
                       <tr key={e.id} className="border-b border-[var(--color-line)]/70">
                         <td className="py-2">{e.student.user.name}</td>

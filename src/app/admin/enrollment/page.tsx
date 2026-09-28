@@ -1,25 +1,19 @@
-import { prisma } from "@/lib/prisma";
+import { db } from "@/lib/prisma";
 import { enrollStudent, linkParentStudent } from "@/lib/actions/admin";
 import { PageHeader, Panel, DataTable, SubmitButton } from "@/components/ui";
 import { classLabel } from "@/lib/utils";
 
 export default async function AdminEnrollmentPage() {
   const [students, classes, parents, enrollments, links] = await Promise.all([
-    prisma.studentProfile.findMany({ include: { user: true }, orderBy: { studentId: "asc" } }),
-    prisma.class.findMany({ include: { academicYear: true }, orderBy: { name: "asc" } }),
-    prisma.user.findMany({ where: { role: "PARENT" }, orderBy: { name: "asc" } }),
-    prisma.enrollment.findMany({
-      include: {
-        student: { include: { user: true } },
-        class: true,
-      },
+    db.studentProfile_findMany({ populate: { user: true }, orderBy: { studentId: "asc" } }),
+    db.class_findMany({ populate: { academicYear: true }, orderBy: { name: "asc" } }),
+    db.user_findMany({ where: { role: "PARENT" }, orderBy: { name: "asc" } }),
+    db.enrollment_findMany({
+      populate: { student: { user: true }, class: true },
       orderBy: { enrolledAt: "desc" },
     }),
-    prisma.parentStudent.findMany({
-      include: {
-        parent: true,
-        student: { include: { user: true } },
-      },
+    db.parentStudent_findMany({
+      populate: { parent: true, student: { user: true } },
     }),
   ]);
 

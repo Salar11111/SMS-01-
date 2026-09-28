@@ -37,9 +37,9 @@ A full-stack school management system built with **Next.js 16**, featuring role-
 
 | Layer | Technology |
 |-------|-----------|
-| Framework | Next.js 16 (App Router, Server Components, Server Actions, proxy.ts) |
+| Framework | Next.js 16 (App Router, Server Components, Server Actions, middleware.ts) |
 | Language | TypeScript 5 (strict mode) |
-| Database | SQLite via Prisma ORM (swap to PostgreSQL/MySQL by changing datasource) |
+| Database | MongoDB via Mongoose ODM |
 | Authentication | NextAuth.js v5 beta (Credentials provider, JWT sessions) |
 | Styling | Tailwind CSS v4 with CSS custom properties |
 | Validation | Zod v4 |
@@ -59,8 +59,8 @@ npm install
 cp .env.example .env
 # Generate a real secret: openssl rand -base64 32
 
-# Initialize database
-npm run db:migrate
+# Set up MongoDB
+npm install
 npm run db:seed
 
 # Start development server
@@ -103,8 +103,6 @@ npm run test:e2e         # Playwright E2E + accessibility
 npm run test:e2e:ui      # Playwright UI mode
 
 # Database
-npm run db:migrate       # Create/apply dev migrations
-npm run db:deploy        # Apply migrations (production)
 npm run db:seed          # Seed demo data
 npm run db:reset         # Reset + re-seed
 ```
@@ -113,7 +111,7 @@ npm run db:reset         # Reset + re-seed
 
 ```
 src/
-├── proxy.ts                    # Next.js 16 edge middleware (route protection)
+├── middleware.ts           # Next.js 16 edge middleware (route protection)
 ├── app/
 │   ├── layout.tsx              # Root layout (fonts, metadata, providers)
 │   ├── page.tsx                # Marketing landing page
@@ -147,7 +145,8 @@ src/
 │   ├── auth.ts                 # NextAuth configuration
 │   ├── auth.config.ts          # Auth options (pages, session, callbacks)
 │   ├── authz.ts                # requireUser/requireRole + typed errors
-│   ├── prisma.ts               # Prisma client singleton
+│   ├── prisma.ts               # MongoDB data access layer (Mongoose models)
+│   ├── models/                 # Mongoose model schemas
 │   ├── rbac.ts                 # Role definitions + path rules
 │   ├── rate-limit.ts           # Login rate limiting (5 attempts / 15 min)
 │   ├── schemas.ts              # Zod validation schemas
@@ -155,11 +154,12 @@ src/
 │   ├── validation.ts           # Shared form parsing helpers
 │   ├── utils.ts                # Utility functions (formatting, safe redirects)
 │   ├── cn.ts                   # className utility
-│   ├── errors.ts               # Shared error types
 │   └── actions/                # Server Actions
 │       ├── admin.ts            # Admin mutations (CRUD users, classes, etc.)
 │       ├── teacher.ts          # Teacher mutations (attendance, grades)
 │       └── signout.ts          # Sign out action
+├── models/
+│   └── index.ts                # Mongoose model barrel export
 └── vitest.d.ts                 # Vitest global type declarations
 
 tests/
@@ -187,12 +187,12 @@ prisma/
 ## Security
 
 - **Authentication**: JWT sessions, bcrypt cost 12, credentials provider
-- **Authorization**: Edge proxy checks every route; Server Actions re-verify via `requireRole()`
+- **Authorization**: Edge middleware checks every route; Server Actions re-verify via `requireRole()`
 - **Rate limiting**: 5 failed login attempts → 15-minute lockout (per-email)
 - **Input validation**: Zod schemas on every mutation path
 - **Headers**: X-Frame-Options DENY, nosniff, Referrer-Policy, HSTS, Permissions-Policy
 - **Open redirect prevention**: `isSafeCallbackUrl()` validates same-origin
-- **No SQL injection**: 100% typed Prisma queries (zero raw SQL)
+- **No SQL injection**: 100% typed Mongoose queries (zero raw queries)
 - **Secrets**: `.env` gitignored; only `.env.example` tracked
 
 ## Testing
@@ -215,7 +215,7 @@ npm run test:e2e
 See **[DEPLOYMENT.md](DEPLOYMENT.md)** for full instructions covering:
 - Vercel deployment
 - Docker with standalone output
-- Database migration strategies
+- MongoDB setup and seed strategies
 - Environment variable configuration
 - GitHub Actions CI pipeline
 
@@ -223,17 +223,16 @@ See **[DEPLOYMENT.md](DEPLOYMENT.md)** for full instructions covering:
 
 1. Push to GitHub
 2. Import in Vercel
-3. Set env vars: `DATABASE_URL`, `AUTH_SECRET`, `AUTH_URL`
+3. Set env vars: `MONGODB_URI`, `AUTH_SECRET`, `NEXTAUTH_URL`
 4. Deploy
+5. Run `npm run db:seed` to populate initial data
 
-### Database options for production
+### Database
 
 | Provider | Type | Best for |
 |----------|------|----------|
-| Turso | SQLite | Edge/Vercel |
-| Neon | PostgreSQL | Serverless branching |
-| PlanetScale | MySQL | Schema branching |
-| Supabase | PostgreSQL | Full backend |
+| MongoDB Atlas | Document | Serverless, Vercel |
+| Self-hosted MongoDB | Document | Full control |
 
 ## Accessibility
 

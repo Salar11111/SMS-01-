@@ -1,20 +1,17 @@
 import Link from "next/link";
 import { auth } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
+import { db } from "@/lib/prisma";
 import { PageHeader, Panel, DataTable, EmptyState } from "@/components/ui";
 import { classLabel } from "@/lib/utils";
 
 export default async function TeacherAttendanceIndexPage() {
   const session = await auth();
-  const teacher = await prisma.teacherProfile.findUnique({
+  const teacher = await db.teacherProfile_findUnique({
     where: { userId: session!.user.id },
-    include: {
-      classSubjects: { include: { class: true, subject: true } },
-    },
   });
 
   const uniqueClasses = new Map<string, { name: string; section: string }>();
-  teacher?.classSubjects.forEach((cs) => {
+  teacher?.classSubjects.forEach((cs: any) => {
     uniqueClasses.set(cs.classId, { name: cs.class.name, section: cs.class.section });
   });
 

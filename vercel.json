@@ -3,10 +3,5 @@
   "buildCommand": "next build",
   "devCommand": "next dev",
   "installCommand": "npm install",
-  "framework": "nextjs",
-  "env": {
-    "NEXTAUTH_URL": "@nextauth_url",
-    "AUTH_SECRET": "@auth_secret",
-    "MONGODB_URI": "@mongodb_uri"
-  }
+  "framework": "nextjs"
 }

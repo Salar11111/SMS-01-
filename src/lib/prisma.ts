@@ -1,6 +1,7 @@
 import { nanoid } from "nanoid";
 import type { Model } from "mongoose";
 import { connectDB } from "@/lib/db-connect";
+import type { SchoolDocument } from "@/lib/define-model";
 import {
   attemptsIncrement,
   buildPopulate,
@@ -56,7 +57,20 @@ async function attachClassCounts(root: unknown) {
   }
 }
 
-async function readMany(model: Model<any>, params: unknown, hidePassword = false): Promise<any[]> {
+function asDocument(value: unknown): SchoolDocument | null {
+  if (value == null) return null;
+  return present(value) as SchoolDocument;
+}
+
+function asDocuments(value: unknown): SchoolDocument[] {
+  return present(value) as SchoolDocument[];
+}
+
+async function readMany(
+  model: Model<SchoolDocument>,
+  params: unknown,
+  hidePassword = false,
+): Promise<SchoolDocument[]> {
   const args = unwrapArgs(params);
   let query = model.find(normalizeWhere(args.where));
   const sort = mongoSort(args.orderBy);
@@ -66,46 +80,55 @@ async function readMany(model: Model<any>, params: unknown, hidePassword = false
   else if (hidePassword) query = query.select("-passwordHash");
   const populate = buildPopulate(args.populate);
   if (populate.length > 0) query = query.populate(populate);
-  const docs = present(await query.lean(LEAN));
+  const docs = asDocuments(await query.lean(LEAN));
   await attachClassCounts(docs);
-  if (!sort && args.orderBy) return sortInMemory(docs as unknown[], args.orderBy);
+  if (!sort && args.orderBy) return sortInMemory(docs, args.orderBy);
   return docs;
 }
 
-async function readOne(model: Model<any>, params: unknown): Promise<any> {
+async function readOne(model: Model<SchoolDocument>, params: unknown): Promise<SchoolDocument | null> {
   const args = unwrapArgs(params);
   let query = model.findOne(normalizeWhere(args.where));
   const populate = buildPopulate(args.populate);
   if (populate.length > 0) query = query.populate(populate);
-  const doc = present(await query.lean(LEAN));
+  const doc = asDocument(await query.lean(LEAN));
   if (doc) await attachClassCounts(doc);
   return doc;
 }
 
-async function createOne(model: Model<any>, data: Record<string, unknown>): Promise<any> {
-  return model.create(data);
+async function createOne(model: Model<SchoolDocument>, data: Record<string, unknown>): Promise<SchoolDocument> {
+  const created = await model.create(data);
+  return created as unknown as SchoolDocument;
 }
 
-async function updateOne(model: Model<any>, where: Record<string, unknown>, data: Record<string, unknown>): Promise<any> {
-  return present(
+async function updateOne(
+  model: Model<SchoolDocument>,
+  where: Record<string, unknown>,
+  data: Record<string, unknown>,
+): Promise<SchoolDocument | null> {
+  return asDocument(
     await model.findOneAndUpdate(normalizeWhere(where), data, { new: true }).lean(LEAN),
   );
 }
 
-async function updateMany(model: Model<any>, where: Record<string, unknown>, data: Record<string, unknown>) {
+async function updateMany(
+  model: Model<SchoolDocument>,
+  where: Record<string, unknown>,
+  data: Record<string, unknown>,
+) {
   return model.updateMany(normalizeWhere(where), data).exec();
 }
 
 async function upsert(
-  model: Model<any>,
+  model: Model<SchoolDocument>,
   where: Record<string, unknown>,
   createData: Record<string, unknown>,
   updateData: Record<string, unknown>,
-) {
+): Promise<SchoolDocument> {
   const filter = normalizeWhere(where);
   const operators = Object.keys(updateData).some((key) => key.startsWith("$"));
   if (operators) {
-    return present(
+    return asDocument(
       await model
         .findOneAndUpdate(
           filter,
@@ -113,14 +136,14 @@ async function upsert(
           { new: true, upsert: true },
         )
         .lean(LEAN),
-    );
+    ) as SchoolDocument;
   }
   const existing = await model.findOne(filter).lean(LEAN);
   if (existing) {
-    if (Object.keys(updateData).length === 0) return present(existing);
-    return present(await model.findOneAndUpdate(filter, updateData, { new: true }).lean(LEAN));
+    if (Object.keys(updateData).length === 0) return asDocument(existing) as SchoolDocument;
+    return asDocument(await model.findOneAndUpdate(filter, updateData, { new: true }).lean(LEAN)) as SchoolDocument;
   }
-  return model.create({ ...createData, ...where });
+  return createOne(model, { ...createData, ...where });
 }
 
 const api = {

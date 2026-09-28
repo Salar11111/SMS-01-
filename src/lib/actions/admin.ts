@@ -109,6 +109,7 @@ export async function createAcademicYear(_prev: ActionState, formData: FormData)
     const { name } = parseFormData(createAcademicYearSchema, formDataToObject(formData));
     const year = await db.academicYear_create({ name, isActive: false });
     const yearId = String(year.id ?? year._id);
+    // Two writes, not a transaction: deactivate every other year, then activate this one.
     await db.academicYear_updateMany({ isActive: true, _id: { $ne: yearId } }, { isActive: false });
     await db.academicYear_update({ id: yearId }, { isActive: true });
     revalidatePath("/admin/classes");

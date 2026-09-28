@@ -11,6 +11,52 @@ export type VirtualRef = {
   justOne?: boolean;
 };
 
+/** Lean school document: string nanoid id, stored fields, and populated relations. */
+export interface SchoolDocument {
+  _id: string;
+  id: string;
+  email: string;
+  passwordHash: string;
+  name: string;
+  role: string;
+  active: boolean;
+  userId: string;
+  studentId: string;
+  classId: string;
+  subjectId: string;
+  teacherProfileId: string;
+  studentProfileId: string;
+  parentId: string;
+  assignmentId: string;
+  academicYearId: string;
+  section: string;
+  title: string;
+  status: string;
+  score: number;
+  maxScore: number;
+  attempts: number;
+  lockedAt: Date | null;
+  date: Date;
+  dueDate: Date | null;
+  enrolledAt: Date;
+  key: string;
+  academicYear: SchoolDocument;
+  user: SchoolDocument;
+  class: SchoolDocument;
+  subject: SchoolDocument;
+  teacher: SchoolDocument;
+  student: SchoolDocument;
+  parent: SchoolDocument;
+  assignment: SchoolDocument;
+  studentProfile: SchoolDocument | null;
+  teacherProfile: SchoolDocument | null;
+  enrollments: SchoolDocument[];
+  attendance: SchoolDocument[];
+  grades: SchoolDocument[];
+  classSubjects: SchoolDocument[];
+  _count: { enrollments: number; attendance: number };
+}
+
 export function defineModel(
   name: string,
   definition: mongoose.SchemaDefinition,
@@ -18,11 +64,11 @@ export function defineModel(
     indexes?: { fields: Record<string, 1 | -1>; unique?: boolean }[];
     virtuals?: VirtualRef[];
   },
-): Model<any> {
+): Model<SchoolDocument> {
   if (process.env.NODE_ENV !== "production" && models[name]) {
     mongoose.deleteModel(name);
   }
-  if (models[name]) return models[name] as unknown as Model<any>;
+  if (models[name]) return models[name] as Model<SchoolDocument>;
 
   const schema = new Schema(
     {
@@ -48,5 +94,5 @@ export function defineModel(
     schema.index(index.fields, index.unique ? { unique: true } : undefined);
   }
 
-  return model(name, schema) as unknown as Model<any>;
+  return model(name, schema) as unknown as Model<SchoolDocument>;
 }

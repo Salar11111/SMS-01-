@@ -24,13 +24,11 @@ export async function connectDB() {
   }
   if (cache.conn) return cache.conn;
   mongoose.set("bufferTimeoutMS", 30000);
-  console.log("[db] connecting", mongoose.connection.readyState);
   if (!cache.promise) {
     cache.promise = mongoose.connect(uri, { serverSelectionTimeoutMS: 15000 });
   }
   try {
     cache.conn = await cache.promise;
-    console.log("[db] connected", mongoose.connection.readyState, mongoose.connection.host);
   } catch (error) {
     cache.promise = null;
     throw error;

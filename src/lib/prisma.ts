@@ -52,16 +52,17 @@ function buildPopulate(populate: Record<string, boolean | string | object>): any
 
 function parseOrderBy(orderBy: Record<string, string> | Array<Record<string, string>>): any[] {
   if (Array.isArray(orderBy)) {
-    return orderBy.map((o) => {
+    const result: any[] = [];
+    for (const o of orderBy) {
       for (const [key, val] of Object.entries(o)) {
-        return { [key]: val === "asc" ? 1 : -1 };
+        result.push([key, val === "asc" ? 1 : -1]);
       }
-      return {};
-    });
+    }
+    return result;
   }
-  const result: any = {};
+  const result: any[] = [];
   for (const [key, val] of Object.entries(orderBy)) {
-    result[key] = val === "asc" ? 1 : -1;
+    result.push([key, val === "asc" ? 1 : -1]);
   }
   return result;
 }

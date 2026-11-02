@@ -1,13 +1,28 @@
 import { db } from "@/lib/prisma";
-import { createUser, setUserActive, updateUser } from "@/lib/actions/admin";
+import { createUser, setUserActive, updateUser } from "@/lib/actions";
 import { ActionForm } from "@/components/action-form";
 import { PageHeader, Panel, Field, SubmitButton } from "@/components/ui";
 import { formatRole, type AppRole } from "@/lib/rbac";
+import { escapeRegex } from "@/lib/school";
 
 const roles: AppRole[] = ["ADMIN", "TEACHER", "STUDENT", "PARENT"];
 
-export default async function AdminUsersPage() {
+export default async function AdminUsersPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ q?: string }>;
+}) {
+  const { q } = await searchParams;
+  const query = q?.trim() ?? "";
   const users = await db.user_findMany({
+    where: query
+      ? {
+          $or: [
+            { name: { $regex: escapeRegex(query), $options: "i" } },
+            { email: { $regex: escapeRegex(query), $options: "i" } },
+          ],
+        }
+      : {},
     orderBy: { createdAt: "desc" },
     populate: { studentProfile: { studentId: true }, teacherProfile: { id: true } },
   });
@@ -15,6 +30,14 @@ export default async function AdminUsersPage() {
   return (
     <div className="space-y-6">
       <PageHeader title="Users" description="Create accounts, change roles, and deactivate access." />
+      <form className="flex flex-wrap items-end gap-3" action="/admin/users">
+        <div className="min-w-[220px] flex-1">
+          <Field label="Search name or email" name="q" defaultValue={query} />
+        </div>
+        <button type="submit" className="btn-outline">
+          Search
+        </button>
+      </form>
 
       <Panel title="Create user">
         <ActionForm action={createUser} className="grid gap-3 sm:grid-cols-2">

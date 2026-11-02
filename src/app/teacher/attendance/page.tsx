@@ -12,8 +12,8 @@ export default async function TeacherAttendanceIndexPage() {
   });
 
   const uniqueClasses = new Map<string, { name: string; section: string }>();
-  teacher?.classSubjects.forEach((cs: { classId: string; class: { name: string; section: string } }) => {
-    uniqueClasses.set(cs.classId, { name: cs.class.name, section: cs.class.section });
+  teacher?.classSubjects?.forEach((cs) => {
+    uniqueClasses.set(cs.classId, { name: cs.class?.name ?? "", section: cs.class?.section ?? "" });
   });
 
   const rows = Array.from(uniqueClasses.entries()).map(([id, c]) => [

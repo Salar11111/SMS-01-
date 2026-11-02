@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
-import { changePassword } from "@/lib/actions/admin";
+import { changePassword } from "@/lib/actions";
 import { ActionForm } from "@/components/action-form";
 import { DashboardShell, Field, PageHeader, Panel, SubmitButton } from "@/components/ui";
 import { formatRole, navFor } from "@/lib/rbac";

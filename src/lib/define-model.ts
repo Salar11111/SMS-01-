@@ -11,50 +11,67 @@ export type VirtualRef = {
   justOne?: boolean;
 };
 
-/** Lean school document: string nanoid id, stored fields, and populated relations. */
+/**
+ * Storage bag for Mongoose. Fields are optional because one collection does not
+ * have another collection's columns. Callers of `db` use the records in `src/lib/records.ts`.
+ */
 export interface SchoolDocument {
   _id: string;
   id: string;
-  email: string;
-  passwordHash: string;
-  name: string;
-  role: string;
-  active: boolean;
-  userId: string;
-  studentId: string;
-  classId: string;
-  subjectId: string;
-  teacherProfileId: string;
-  studentProfileId: string;
-  parentId: string;
-  assignmentId: string;
-  academicYearId: string;
-  section: string;
-  title: string;
-  status: string;
-  score: number;
-  maxScore: number;
-  attempts: number;
-  lockedAt: Date | null;
-  date: Date;
-  dueDate: Date | null;
-  enrolledAt: Date;
-  key: string;
-  academicYear: SchoolDocument;
-  user: SchoolDocument;
-  class: SchoolDocument;
-  subject: SchoolDocument;
-  teacher: SchoolDocument;
-  student: SchoolDocument;
-  parent: SchoolDocument;
-  assignment: SchoolDocument;
-  studentProfile: SchoolDocument | null;
-  teacherProfile: SchoolDocument | null;
-  enrollments: SchoolDocument[];
-  attendance: SchoolDocument[];
-  grades: SchoolDocument[];
-  classSubjects: SchoolDocument[];
-  _count: { enrollments: number; attendance: number };
+  createdAt?: Date;
+  updatedAt?: Date;
+  email?: string;
+  passwordHash?: string;
+  name?: string;
+  role?: string;
+  active?: boolean;
+  isActive?: boolean;
+  startDate?: Date | null;
+  endDate?: Date | null;
+  userId?: string;
+  studentId?: string;
+  classId?: string;
+  subjectId?: string;
+  teacherProfileId?: string;
+  studentProfileId?: string;
+  parentId?: string;
+  assignmentId?: string;
+  academicYearId?: string;
+  section?: string;
+  title?: string;
+  status?: string;
+  score?: number;
+  maxScore?: number;
+  attempts?: number;
+  lockedAt?: Date | null;
+  date?: Date;
+  dueDate?: Date | null;
+  enrolledAt?: Date;
+  endedAt?: Date | null;
+  key?: string;
+  actorId?: string;
+  action?: string;
+  entity?: string;
+  entityId?: string;
+  before?: string;
+  after?: string;
+  markedById?: string;
+  academicYear?: SchoolDocument | null;
+  user?: SchoolDocument | null;
+  class?: SchoolDocument | null;
+  subject?: SchoolDocument | null;
+  teacher?: SchoolDocument | null;
+  student?: SchoolDocument | null;
+  parent?: SchoolDocument | null;
+  assignment?: SchoolDocument | null;
+  studentProfile?: SchoolDocument | null;
+  teacherProfile?: SchoolDocument | null;
+  actor?: SchoolDocument | null;
+  enrollments?: SchoolDocument[];
+  attendance?: SchoolDocument[];
+  grades?: SchoolDocument[];
+  classSubjects?: SchoolDocument[];
+  _count?: { enrollments: number; attendance: number };
 }
 
 export function defineModel(

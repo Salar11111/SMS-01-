@@ -4,7 +4,9 @@ import {
   createClass,
   createSubject,
   assignTeacherToClass,
-} from "@/lib/actions/admin";
+  updateClass,
+  removeTeacherAssignment,
+} from "@/lib/actions";
 import { ActionForm } from "@/components/action-form";
 import { PageHeader, Panel, DataTable, Field, SubmitButton } from "@/components/ui";
 import { classLabel } from "@/lib/utils";
@@ -37,6 +39,8 @@ export default async function AdminClassesPage() {
             <div className="min-w-[180px] flex-1">
               <Field label="Year name" name="name" required defaultValue="2026-2027" />
             </div>
+            <Field label="Starts" name="startDate" type="date" />
+            <Field label="Ends" name="endDate" type="date" />
             <SubmitButton>Add year</SubmitButton>
           </ActionForm>
         </Panel>
@@ -114,7 +118,7 @@ export default async function AdminClassesPage() {
             >
               {teachers.map((t) => (
                 <option key={t.id} value={t.id}>
-                  {t.user.name}
+                  {t.user?.name ?? "Teacher"}
                 </option>
               ))}
             </select>
@@ -126,23 +130,39 @@ export default async function AdminClassesPage() {
       </Panel>
 
       <Panel title="Classes">
-        <DataTable
-          headers={["Class", "Year", "Students"]}
-          rows={classes.map((c) => [
-            classLabel(c.name, c.section),
-            c.academicYear.name,
-            String(c._count.enrollments),
-          ])}
-        />
+        <div className="space-y-4">
+          {classes.map((c) => (
+            <ActionForm key={c.id} action={updateClass} className="grid gap-3 border-b border-[var(--color-line)] pb-4 sm:grid-cols-5">
+              <input type="hidden" name="classId" value={c.id} />
+              <Field label="Name" name="name" required defaultValue={c.name} />
+              <Field label="Section" name="section" required defaultValue={c.section} />
+              <div className="text-sm">
+                <span className="mb-1 block font-medium text-[var(--color-ink)]">Year</span>
+                <p className="py-2 text-[var(--color-slate-muted)]">{c.academicYear?.name ?? "—"}</p>
+              </div>
+              <div className="text-sm">
+                <span className="mb-1 block font-medium text-[var(--color-ink)]">Students</span>
+                <p className="py-2">{c._count?.enrollments ?? 0}</p>
+              </div>
+              <div className="flex items-end">
+                <SubmitButton>Rename</SubmitButton>
+              </div>
+            </ActionForm>
+          ))}
+        </div>
       </Panel>
 
       <Panel title="Teacher assignments">
         <DataTable
-          headers={["Class", "Subject", "Teacher"]}
+          headers={["Class", "Subject", "Teacher", ""]}
           rows={assignments.map((a) => [
-            classLabel(a.class.name, a.class.section),
-            a.subject.name,
-            a.teacher.user.name,
+            classLabel(a.class?.name ?? "", a.class?.section ?? ""),
+            a.subject?.name ?? "—",
+            a.teacher?.user?.name ?? "—",
+            <ActionForm key={a.id} action={removeTeacherAssignment}>
+              <input type="hidden" name="classSubjectId" value={a.id} />
+              <SubmitButton>Remove</SubmitButton>
+            </ActionForm>,
           ])}
         />
       </Panel>

@@ -32,6 +32,18 @@ describe("data layer", () => {
     expect(StudentProfile.create).toHaveBeenCalledWith({ userId: "user-1", studentId: "STU-9" });
   });
 
+  it("saves a whole attendance day in one bulk write", async () => {
+    const date = new Date("2026-09-28T00:00:00.000Z");
+    vi.spyOn(AttendanceRecord, "bulkWrite").mockResolvedValue({} as never);
+    await db.attendanceRecord_bulkUpsert([
+      { studentProfileId: "student-1", classId: "class-1", date, status: "LATE", markedById: "teacher-1" },
+      { studentProfileId: "student-2", classId: "class-1", date, status: "PRESENT", markedById: "teacher-1" },
+    ]);
+    expect(AttendanceRecord.bulkWrite).toHaveBeenCalledTimes(1);
+    const [ops] = vi.mocked(AttendanceRecord.bulkWrite).mock.calls[0];
+    expect(ops).toHaveLength(2);
+  });
+
   it("passes a filter and an update when saving attendance", async () => {
     const date = new Date("2026-09-28T00:00:00.000Z");
     vi.spyOn(AttendanceRecord, "updateMany").mockReturnValue({ exec: async () => ({}) } as never);

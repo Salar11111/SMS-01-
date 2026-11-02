@@ -35,3 +35,11 @@ export async function connectDB() {
   }
   return cache.conn;
 }
+
+export async function disconnectDB() {
+  cache.promise = null;
+  cache.conn = null;
+  if (mongoose.connection.readyState !== 0) {
+    await mongoose.disconnect();
+  }
+}

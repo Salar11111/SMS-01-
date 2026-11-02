@@ -12,8 +12,8 @@ export default function GlobalError({
       <body
         style={{
           fontFamily: "system-ui, sans-serif",
-          background: "#FEF9F3",
-          color: "#3D4A44",
+          background: "#F6F3EE",
+          color: "#1C1917",
           margin: 0,
         }}
       >
@@ -37,7 +37,7 @@ export default function GlobalError({
             >
               Something went wrong
             </h1>
-            <p style={{ color: "#7A8A82", marginBottom: "0.5rem" }}>
+            <p style={{ color: "#78716C", marginBottom: "0.5rem" }}>
               We encountered an unexpected error. Please try again.
             </p>
             {error.digest && (
@@ -55,10 +55,10 @@ export default function GlobalError({
             <button
               onClick={reset}
               style={{
-                background: "#6B8E5E",
+                background: "#0F766E",
                 color: "#fff",
                 border: "none",
-                borderRadius: "12px",
+                borderRadius: "9999px",
                 padding: "0.75rem 1.5rem",
                 fontSize: "0.875rem",
                 fontWeight: 600,

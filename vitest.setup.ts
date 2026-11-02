@@ -36,14 +36,8 @@ vi.mock("@/lib/prisma", () => ({
   },
 }));
 
-vi.mock("@/lib/actions/signout", () => ({
+vi.mock("@/lib/actions", () => ({
   signOutAction: vi.fn(),
-}));
-
-vi.mock("@/lib/rate-limit", () => ({
-  isLoginBlocked: vi.fn().mockResolvedValue(false),
-  recordLoginFailure: vi.fn(),
-  resetLoginAttempts: vi.fn(),
 }));
 
 Object.defineProperty(HTMLDialogElement.prototype, "showModal", { writable: true, value: vi.fn() });

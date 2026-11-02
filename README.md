@@ -7,7 +7,7 @@ A full-stack school management system built with **Next.js 16**, featuring role-
 [![CI](https://img.shields.io/badge/CI-GitHub%20Actions-blue)](.github/workflows/ci.yml)
 ![Next.js](https://img.shields.io/badge/Next.js-16-black)
 ![TypeScript](https://img.shields.io/badge/TypeScript-5-blue)
-![Tests](https://img.shields.io/badge/tests-73%20passing-brightgreen)
+![Tests](https://img.shields.io/badge/tests-Vitest%20%2B%20Playwright-brightgreen)
 
 </div>
 
@@ -17,8 +17,8 @@ A full-stack school management system built with **Next.js 16**, featuring role-
 
 | Role | Capabilities |
 |------|-------------|
-| **Admin** | User management, academic years, classes, subjects, teacher assignments, enrollment, parent linking, reports |
-| **Teacher** | Class overview, attendance tracking, gradebook management, assignment creation |
+| **Admin** | User management, academic years, classes, subjects, teacher assignments, enrollment history, parent linking, reports, audit log |
+| **Teacher** | Class overview, attendance tracking, gradebook management, assignments for the subjects they teach |
 | **Student** | Enrolled classes, attendance rate, grade viewing |
 | **Parent** | Children's enrollments, attendance, and academic progress |
 
@@ -30,8 +30,8 @@ A full-stack school management system built with **Next.js 16**, featuring role-
 - Error boundaries and loading states for route segments
 - Custom design system with light/dark mode, Playfair Display + Inter typography
 - Responsive layout with warm sage/terracotta palette
-- OG metadata, robots.txt, sitemap.xml
-- WCAG 2.1 AA: semantic HTML, ARIA labels, focus management, keyboard navigation
+- OG metadata
+- Labeled sign-in fields, semantic page regions, and a Playwright axe check for the home and login pages
 
 ## Tech Stack
 
@@ -118,9 +118,7 @@ src/
 │   ├── error.tsx               # Global error boundary
 │   ├── global-error.tsx        # Root layout error boundary
 │   ├── not-found.tsx           # 404 page
-│   ├── robots.ts               # robots.txt
-│   ├── sitemap.ts              # sitemap.xml
-│   ├── login/                  # Authentication (page, error, loading)
+│   ├── login/                  # Authentication
 │   ├── admin/                  # Admin dashboard
 │   │   ├── classes/            # Class management
 │   │   ├── enrollment/         # Student enrollment
@@ -142,22 +140,16 @@ src/
 │   ├── login-form.tsx          # Login form
 │   └── __tests__/              # Component tests
 ├── lib/
-│   ├── auth.ts                 # NextAuth configuration
-│   ├── auth.config.ts          # Auth options (pages, session, callbacks)
-│   ├── authz.ts                # requireUser/requireRole + typed errors
-│   ├── prisma.ts               # MongoDB data access layer (Mongoose models)
-│   ├── models/                 # Mongoose model schemas
-│   ├── rbac.ts                 # Role definitions + path rules
-│   ├── rate-limit.ts           # Login rate limiting (5 attempts / 15 min)
+│   ├── auth.ts                 # Session, role guards, login lockout
+│   ├── auth.config.ts          # Edge-safe auth options for proxy.ts
+│   ├── rbac.ts                 # Role names and navigation
+│   ├── actions.ts              # Every server action
+│   ├── models.ts               # Every Mongoose model
+│   ├── prisma.ts               # Database queries
+│   ├── school.ts               # Enrollment, terms, and reports
 │   ├── schemas.ts              # Zod validation schemas
-│   ├── api-validation.ts       # API route validation middleware
-│   ├── validation.ts           # Shared form parsing helpers
-│   ├── utils.ts                # Utility functions (formatting, safe redirects)
-│   ├── cn.ts                   # className utility
-│   └── actions/                # Server Actions
-│       ├── admin.ts            # Admin mutations (CRUD users, classes, etc.)
-│       ├── teacher.ts          # Teacher mutations (attendance, grades)
-│       └── signout.ts          # Sign out action
+│   ├── seed.ts
+│   └── utils.ts                # Formatting and safe redirects
 └── vitest.d.ts                 # Vitest global type declarations
 
 tests/
@@ -169,13 +161,8 @@ tests/
 **What's good:**
 - Clear separation: `app/` (routes), `components/` (UI), `lib/` (business logic)
 - Tests co-located with source (`__tests__/` folders)
-- Server Actions grouped by domain (`actions/admin.ts`, `actions/teacher.ts`)
-- One shared UI module keeps the component API consistent
-
-**What could be improved (noted, not blocking):**
-- `ui.tsx` is 644 lines / ~20 components — could split into `components/ui/` directory
-- Three overlapping auth modules (`auth.ts`, `auth.config.ts`, `authz.ts`) — responsibilities are clear but could be consolidated
-- No `src/types/` for shared TypeScript interfaces (types live next to their source)
+- One actions file, one models file, and one school file instead of a folder per concern
+- `auth.config.ts` stays separate so route protection does not load the database
 
 ## Security
 
@@ -194,13 +181,17 @@ tests/
 # Unit tests
 npm test
 
+# Mongo round-trip for enrollment history. CI sets this against its Mongo service.
+# MONGO_INTEGRATION=1 MONGODB_URI=mongodb://127.0.0.1:27017/school-management npm test
+
 # E2E + accessibility (requires: npx playwright install chromium)
 npm run test:e2e
 ```
 
 **Test coverage areas:**
-- `src/lib/__tests__/` — RBAC, Zod schemas, utility functions
+- `src/lib/__tests__/` — RBAC, Zod schemas, enrollment history, utility functions
 - `src/components/__tests__/` — Button, Input, Stat, UI component library
+- `tests/attendance.spec.ts` — teacher sign-in and saving attendance
 - `tests/a11y.spec.ts` — axe-core accessibility scans (home, login, admin)
 
 ## Deployment

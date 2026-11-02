@@ -19,14 +19,35 @@ export const createUserSchema = z.object({
   studentId: z.string().trim().optional(),
 });
 
-export const createAcademicYearSchema = z.object({
-  name: z.string().trim().min(1, "Name is required"),
-});
+export const createAcademicYearSchema = z
+  .object({
+    name: z.string().trim().min(1, "Name is required"),
+    startDate: emptyOptionalDate,
+    endDate: emptyOptionalDate,
+  })
+  .refine((value) => !value.startDate || !value.endDate || value.endDate >= value.startDate, {
+    message: "End date must be on or after the start date.",
+    path: ["endDate"],
+  });
 
 export const createClassSchema = z.object({
   name: z.string().trim().min(1, "Name is required"),
   section: z.string().trim().min(1, "Section is required"),
   academicYearId: z.string().min(1),
+});
+
+export const updateClassSchema = z.object({
+  classId: z.string().min(1),
+  name: z.string().trim().min(1, "Name is required"),
+  section: z.string().trim().min(1, "Section is required"),
+});
+
+export const removeTeacherAssignmentSchema = z.object({
+  classSubjectId: z.string().min(1),
+});
+
+export const endEnrollmentSchema = z.object({
+  enrollmentId: z.string().min(1),
 });
 
 export const createSubjectSchema = z.object({
@@ -77,6 +98,17 @@ export const createAssignmentSchema = z.object({
   title: z.string().trim().min(1, "Title is required"),
   maxScore: z.coerce.number().positive("Max score must be positive"),
   dueDate: emptyOptionalDate,
+});
+
+export const updateAssignmentSchema = z.object({
+  assignmentId: z.string().min(1),
+  title: z.string().trim().min(1, "Title is required"),
+  maxScore: z.coerce.number().positive("Max score must be positive"),
+  dueDate: emptyOptionalDate,
+});
+
+export const deleteAssignmentSchema = z.object({
+  assignmentId: z.string().min(1),
 });
 
 export const saveGradesSchema = z.object({

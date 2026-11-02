@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/prisma";
-import { saveAttendance } from "@/lib/actions/teacher";
+import { saveAttendance } from "@/lib/actions";
 import { ActionForm } from "@/components/action-form";
 import { PageHeader, Panel, SubmitButton } from "@/components/ui";
 import { classLabel, startOfDay, dateInputValue, formatDate } from "@/lib/utils";
@@ -26,7 +26,7 @@ export default async function TeacherAttendanceClassPage({
 
   const today = startOfDay();
   const enrollments = await db.enrollment_findMany({
-    where: { classId },
+    where: { classId, endedAt: null },
     populate: { student: { user: true, attendance: { where: { classId, date: today } } } },
     orderBy: { student: { user: { name: "asc" } } },
   });
@@ -61,10 +61,10 @@ export default async function TeacherAttendanceClassPage({
               </thead>
               <tbody>
                 {enrollments.map((e) => {
-                  const current = e.student.attendance[0]?.status || "PRESENT";
+                  const current = e.student?.attendance?.[0]?.status || "PRESENT";
                   return (
                     <tr key={e.id} className="border-b border-[var(--color-line)]/70">
-                      <td className="py-2">{e.student.user.name}</td>
+                      <td className="py-2">{e.student?.user?.name ?? "Student"}</td>
                       <td className="py-2">
                         <select
                           name={`status_${e.studentProfileId}`}

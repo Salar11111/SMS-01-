@@ -1,5 +1,5 @@
 import { DashboardShell } from "@/components/ui";
-import { requirePageRole } from "@/lib/authz";
+import { requirePageRole } from "@/lib/auth";
 import { navFor } from "@/lib/rbac";
 
 export default async function TeacherLayout({ children }: { children: React.ReactNode }) {

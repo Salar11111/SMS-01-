@@ -1,6 +1,7 @@
 "use client";
 
-import { cn } from "@/lib/cn";
+import { type ClassValue, clsx } from "clsx";
+import { twMerge } from "tailwind-merge";
 import {
   AlertCircle,
   CheckCircle2,
@@ -13,8 +14,14 @@ import {
 } from "lucide-react";
 import { type ComponentProps, forwardRef } from "react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { useTheme } from "next-themes";
 import { formatRole, type AppRole } from "@/lib/rbac";
-import { signOutAction } from "@/lib/actions/signout";
+import { signOutAction } from "@/lib/actions";
+
+function cn(...inputs: ClassValue[]) {
+  return twMerge(clsx(inputs));
+}
 
 /* ── Button ── */
 export type ButtonVariant = "primary" | "secondary" | "ghost" | "danger" | "outline";
@@ -28,21 +35,21 @@ export interface ButtonProps extends ComponentProps<"button"> {
 
 const variantClasses: Record<ButtonVariant, string> = {
   primary:
-    "bg-[var(--color-primary)] text-white hover:bg-[var(--color-sage-hover)] hover:shadow-lg hover:-translate-y-0.5",
+    "bg-[var(--color-primary)] text-[var(--color-primary-foreground)] hover:bg-[var(--color-sage-hover)] hover:shadow-lg",
   secondary:
-    "bg-[var(--color-primary-soft)] text-[var(--color-primary)] border border-transparent hover:bg-[var(--color-sage-light)] hover:shadow-md hover:-translate-y-0.5",
+    "bg-[var(--color-primary-soft)] text-[var(--color-primary)] border border-transparent hover:bg-[var(--color-sage-light)]",
   ghost:
-    "text-[var(--color-slate-muted)] hover:bg-[var(--color-surface)] hover:text-[var(--color-ink)] hover:shadow-sm",
+    "text-[var(--color-slate-muted)] hover:bg-[var(--color-surface)] hover:text-[var(--color-ink)]",
   danger:
-    "bg-[var(--color-error)] text-white hover:shadow-lg hover:-translate-y-0.5",
+    "bg-[var(--color-error)] text-white hover:shadow-lg",
   outline:
-    "border border-[var(--color-line)] text-[var(--color-slate)] bg-transparent hover:bg-[var(--color-surface)] hover:border-[var(--color-line-strong)] hover:shadow-sm",
+    "border border-[var(--color-line)] text-[var(--color-slate)] bg-transparent hover:bg-[var(--color-surface)] hover:border-[var(--color-ink)]",
 };
 
 const sizeClasses: Record<ButtonSize, string> = {
-  sm: "px-3.5 py-1.5 text-xs rounded-lg gap-1.5",
-  md: "px-5 py-2.5 text-sm rounded-xl gap-2",
-  lg: "px-6 py-3 text-base rounded-xl gap-2",
+  sm: "px-3.5 py-1.5 text-xs rounded-full gap-1.5",
+  md: "px-5 py-2.5 text-sm rounded-full gap-2",
+  lg: "px-6 py-3 text-base rounded-full gap-2",
 };
 
 export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
@@ -52,7 +59,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
         ref={ref}
         disabled={disabled || loading}
         className={cn(
-          "inline-flex items-center justify-center font-semibold transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)] disabled:opacity-50 disabled:pointer-events-none",
+          "inline-flex items-center justify-center font-semibold transition-all duration-200 ease-[cubic-bezier(0.16,1,0.3,1)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)] disabled:opacity-50 disabled:pointer-events-none",
           variantClasses[variant],
           sizeClasses[size],
           className,
@@ -171,7 +178,7 @@ export function DataTable({
             <tr
               key={i}
               className={cn(
-                "border-b border-[var(--color-line)]/60 last:border-0 transition-colors",
+                "border-b border-[var(--color-line)]/60 last:border-0 transition-colors duration-200 hover:bg-[var(--color-primary-soft)]/50",
                 onRowClick && "cursor-pointer hover:bg-[var(--color-sage-lighter)]",
                 i % 2 === 1 && "bg-[var(--color-surface)]/50",
               )}
@@ -568,6 +575,13 @@ export function SectionLabel({ children }: { children: React.ReactNode }) {
 }
 
 /* ── DashboardShell ── */
+function navIsCurrent(href: string, pathname: string) {
+  if (pathname === href) return true;
+  const roots = ["/admin", "/teacher", "/student", "/parent", "/account"];
+  if (roots.includes(href)) return false;
+  return pathname.startsWith(`${href}/`);
+}
+
 export function DashboardShell({
   title,
   role,
@@ -581,32 +595,29 @@ export function DashboardShell({
   nav: { href: string; label: string }[];
   children: React.ReactNode;
 }) {
+  const pathname = usePathname();
+  const { resolvedTheme, setTheme } = useTheme();
+
   return (
     <div className="min-h-screen bg-[var(--color-background)]">
-      <header aria-label={title} className="sticky top-0 z-30 border-b border-[var(--color-line)] bg-[var(--color-panel)]/95 backdrop-blur-sm">
-        <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-3">
+      <header aria-label={title} className="sticky top-0 z-30 border-b border-[var(--color-line)] bg-[var(--color-panel)]/90 backdrop-blur-md">
+        <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-3">
           <Link href="/" className="flex items-center gap-2.5 group">
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[var(--color-primary)] text-sm font-bold text-white shadow-sm transition-transform group-hover:scale-105">
+            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[var(--color-primary)] text-sm font-bold text-[var(--color-primary-foreground)] shadow-sm transition-transform duration-200 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:scale-105">
               H
             </div>
-            <span className="hidden font-[family-name:var(--font-display)] text-xl font-bold text-[var(--color-ink)] sm:inline">
+            <span className="hidden font-[family-name:var(--font-display)] text-xl font-semibold text-[var(--color-ink)] sm:inline">
               Harbor School
             </span>
           </Link>
           <div className="flex items-center gap-2">
             <button
-              onClick={() => {
-                const next =
-                  document.documentElement.dataset.theme === "dark"
-                    ? "light"
-                    : "dark";
-                document.documentElement.dataset.theme = next;
-              }}
-              className="rounded-xl p-2 text-[var(--color-slate-muted)] transition-all hover:bg-[var(--color-surface)] hover:text-[var(--color-ink)]"
+              onClick={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")}
+              className="rounded-full p-2 text-[var(--color-slate-muted)] transition-all duration-200 hover:bg-[var(--color-surface)] hover:text-[var(--color-ink)]"
               aria-label="Toggle theme"
             >
-              <Sun className="h-4 w-4 dark:hidden" />
-              <Moon className="h-4 w-4 hidden dark:block" />
+              <Sun className="theme-sun h-4 w-4" />
+              <Moon className="theme-moon h-4 w-4" />
             </button>
             <div className="hidden items-center gap-2 rounded-full border border-[var(--color-line)] bg-[var(--color-surface)] py-1 pl-1 pr-3 sm:flex">
               <Avatar name={userName} size="sm" />
@@ -625,20 +636,24 @@ export function DashboardShell({
           </div>
         </div>
         <nav className="border-t border-[var(--color-line)]">
-          <div className="mx-auto flex max-w-7xl gap-1 overflow-x-auto px-4 py-2 md:overflow-visible">
+          <div className="mx-auto flex max-w-6xl gap-1 overflow-x-auto px-4 py-2 md:overflow-visible">
             {nav.map((item) => (
-              <a
+              <Link
                 key={item.href}
                 href={item.href}
-                className="whitespace-nowrap rounded-xl px-4 py-2 text-sm font-medium text-[var(--color-slate-muted)] transition-all hover:bg-[var(--color-surface)] hover:text-[var(--color-ink)]"
+                aria-current={navIsCurrent(item.href, pathname) ? "page" : undefined}
+                className={cn(
+                  "nav-link whitespace-nowrap rounded-full px-4 py-2 text-sm font-medium",
+                  navIsCurrent(item.href, pathname) && "nav-link-active",
+                )}
               >
                 {item.label}
-              </a>
+              </Link>
             ))}
           </div>
         </nav>
       </header>
-      <main className="mx-auto max-w-7xl px-4 py-8">{children}</main>
+      <main className="page-rise mx-auto max-w-6xl px-4 py-10">{children}</main>
     </div>
   );
 }

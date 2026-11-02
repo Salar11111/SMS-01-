@@ -30,7 +30,11 @@ export function LoginForm() {
     setLoading(false);
 
     if (result?.error) {
-      setError("Invalid email or password.");
+      setError(
+        result.code === "records_unavailable"
+          ? "School records are unavailable. Try again in a moment."
+          : "Invalid email or password.",
+      );
       return;
     }
 
@@ -40,7 +44,7 @@ export function LoginForm() {
   }
 
   return (
-    <form onSubmit={onSubmit} className="space-y-4">
+    <form method="post" action="/login" onSubmit={onSubmit} className="space-y-4">
       <Input
         id="email"
         name="email"
@@ -48,6 +52,7 @@ export function LoginForm() {
         required
         autoComplete="email"
         icon={<Mail className="h-4 w-4" />}
+        aria-label="Email"
         placeholder="you@school.edu"
       />
       <Input
@@ -57,6 +62,7 @@ export function LoginForm() {
         required
         autoComplete="current-password"
         icon={<Lock className="h-4 w-4" />}
+        aria-label="Password"
         placeholder="••••••••"
       />
       {error && (

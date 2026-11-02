@@ -15,15 +15,10 @@ export default async function TeacherHomePage() {
   });
 
   const rows =
-    teacher?.classSubjects.map((cs: {
-      id: string;
-      classId: string;
-      class: { name: string; section: string; _count: { enrollments: number } };
-      subject: { name: string };
-    }) => [
-      classLabel(cs.class.name, cs.class.section),
-      cs.subject.name,
-      String(cs.class._count.enrollments),
+    teacher?.classSubjects?.map((cs) => [
+      classLabel(cs.class?.name ?? "", cs.class?.section ?? ""),
+      cs.subject?.name ?? "—",
+      String(cs.class?._count?.enrollments ?? 0),
       <span key={cs.id} className="flex gap-3">
         <Link
           className="inline-flex items-center gap-1 text-sm font-medium text-[var(--color-primary)] hover:underline"

@@ -2,6 +2,7 @@ import { auth } from "@/lib/auth";
 import { db } from "@/lib/prisma";
 import { PageHeader, Panel, DataTable, Stat, EmptyState, SectionLabel, Badge } from "@/components/ui";
 import { classLabel } from "@/lib/utils";
+import { activeAcademicYear, dateBounds, enrollmentsInYear } from "@/lib/school";
 import { CalendarCheck, ClipboardList, GraduationCap, Award } from "lucide-react";
 
 export default async function StudentHomePage() {
@@ -10,36 +11,52 @@ export default async function StudentHomePage() {
 
   const profile = await db.studentProfile_findUnique({
     where: { userId: session!.user.id },
-    populate: {
-      enrollments: { class: { academicYear: true } },
-      attendance: true,
-      grades: { assignment: true },
-    },
+    populate: { enrollments: { class: { academicYear: true } } },
   });
 
   if (!profile) {
     return <EmptyState message="Student profile not found." />;
   }
 
-  const present = (profile.attendance as { status: string }[]).filter(
-    (record) => record.status === "PRESENT" || record.status === "LATE",
-  ).length;
-   const rate =
-     profile.attendance.length === 0
-       ? "—"
-       : `${Math.round((present / profile.attendance.length) * 100)}%`;
+  const activeYear = activeAcademicYear(profile.enrollments ?? []);
+  const termEnrollments = enrollmentsInYear(profile.enrollments, activeYear);
+  const classIds = termEnrollments.map((enrollment: { classId: string }) => enrollment.classId);
+  const bounds = dateBounds(activeYear);
+  const attendanceWhere: Record<string, unknown> = {
+    studentProfileId: profile.id,
+    classId: { in: classIds },
+  };
+  if (bounds) attendanceWhere.date = bounds;
+  const [attendance, assignments] =
+    classIds.length === 0
+      ? [[], []]
+      : await Promise.all([
+          db.attendanceRecord_findMany({ where: attendanceWhere }),
+          db.assignment_findMany({ where: { classId: { in: classIds } }, select: ["id", "maxScore"] }),
+        ]);
+  const grades =
+    assignments.length === 0
+      ? []
+      : await db.grade_findMany({
+          where: { studentProfileId: profile.id, assignmentId: { in: assignments.map((item) => item.id) } },
+          populate: { assignment: true },
+        });
+  profile.enrollments = termEnrollments;
+  profile.attendance = attendance;
+  profile.grades = grades;
 
-   const graded = profile.grades.filter((g: { assignment?: { maxScore?: number } }) => (g.assignment?.maxScore ?? 0) > 0);
-   const avgScore =
-     graded.length === 0
-       ? "—"
-       : `${Math.round(
-           graded.reduce(
-             (sum: number, g: { score: number; assignment: { maxScore: number } }) =>
-               sum + (g.score / g.assignment.maxScore) * 100,
-             0,
-           ) / graded.length,
-         )}%`;
+  const present = profile.attendance.filter((record) => record.status === "PRESENT").length;
+  const rate =
+    profile.attendance.length === 0 ? "—" : `${Math.round((present / profile.attendance.length) * 100)}%`;
+
+  const graded = profile.grades.filter((grade) => (grade.assignment?.maxScore ?? 0) > 0);
+  const avgScore =
+    graded.length === 0
+      ? "—"
+      : `${Math.round(
+          graded.reduce((sum, grade) => sum + (grade.score / (grade.assignment?.maxScore ?? 1)) * 100, 0) /
+            graded.length,
+        )}%`;
 
   return (
     <div>
@@ -81,10 +98,10 @@ export default async function StudentHomePage() {
         </div>
         <DataTable
           headers={["Class", "Year"]}
-rows={(profile.enrollments as { class: { name: string; section: string; academicYear: { name: string } } }[]).map((enrollment) => [
-             classLabel(enrollment.class.name, enrollment.class.section),
-             enrollment.class.academicYear.name,
-           ])}
+          rows={profile.enrollments.map((enrollment) => [
+            classLabel(enrollment.class?.name ?? "", enrollment.class?.section ?? ""),
+            enrollment.class?.academicYear?.name ?? "—",
+          ])}
         />
       </Panel>
     </div>

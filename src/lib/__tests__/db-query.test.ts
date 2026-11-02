@@ -14,16 +14,19 @@ import {
 describe("db query helpers", () => {
   it("treats a raw filter and a query object differently", () => {
     expect(unwrapArgs({ email: "a@school.edu" }).where).toEqual({ email: "a@school.edu" });
-    expect(unwrapArgs({ where: { userId: "u1" }, orderBy: { name: "asc" } })).toMatchObject({
+    expect(unwrapArgs({ where: { userId: "u1" }, orderBy: { name: "asc" }, limit: 25 })).toMatchObject({
       where: { userId: "u1" },
       orderBy: { name: "asc" },
+      limit: 25,
     });
   });
 
-  it("maps id and in to Mongo operators", () => {
-    expect(normalizeWhere({ id: "abc", studentProfileId: { in: ["s1"] } })).toEqual({
+  it("maps id, in, and date bounds to Mongo operators", () => {
+    const start = new Date("2026-08-01T00:00:00.000Z");
+    expect(normalizeWhere({ id: "abc", studentProfileId: { in: ["s1"] }, date: { gte: start } })).toEqual({
       _id: "abc",
       studentProfileId: { $in: ["s1"] },
+      date: { $gte: start },
     });
   });
 
@@ -32,6 +35,7 @@ describe("db query helpers", () => {
       buildPopulate({
         student: { user: true, attendance: { where: { classId: "c1" } } },
         studentProfile: { studentId: true },
+        actor: { select: "name email" },
       }),
     ).toEqual([
       {
@@ -42,6 +46,7 @@ describe("db query helpers", () => {
         ],
       },
       { path: "studentProfile", select: "studentId" },
+      { path: "actor", select: "name email" },
     ]);
   });
 

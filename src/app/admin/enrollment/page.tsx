@@ -1,8 +1,8 @@
 import { db } from "@/lib/prisma";
-import { enrollStudent, linkParentStudent } from "@/lib/actions/admin";
+import { enrollStudent, endEnrollment, linkParentStudent } from "@/lib/actions";
 import { ActionForm } from "@/components/action-form";
 import { PageHeader, Panel, DataTable, SubmitButton } from "@/components/ui";
-import { classLabel } from "@/lib/utils";
+import { classLabel, formatDate } from "@/lib/utils";
 
 export default async function AdminEnrollmentPage() {
   const [students, classes, parents, enrollments, links] = await Promise.all([
@@ -22,7 +22,7 @@ export default async function AdminEnrollmentPage() {
     <div className="space-y-6">
       <PageHeader
         title="Enrollment"
-        description="Enroll students in classes and link parents to children."
+        description="Enroll students in classes. Ending an enrollment keeps the history and the marks already recorded."
       />
 
       <div className="grid gap-6 lg:grid-cols-2">
@@ -37,7 +37,7 @@ export default async function AdminEnrollmentPage() {
               >
                 {students.map((s) => (
                   <option key={s.id} value={s.id}>
-                    {s.user.name} ({s.studentId})
+                    {s.user?.name ?? "Student"} ({s.studentId})
                   </option>
                 ))}
               </select>
@@ -51,7 +51,7 @@ export default async function AdminEnrollmentPage() {
               >
                 {classes.map((c) => (
                   <option key={c.id} value={c.id}>
-                    {classLabel(c.name, c.section)} · {c.academicYear.name}
+                    {classLabel(c.name, c.section)} · {c.academicYear?.name ?? "—"}
                   </option>
                 ))}
               </select>
@@ -85,7 +85,7 @@ export default async function AdminEnrollmentPage() {
               >
                 {students.map((s) => (
                   <option key={s.id} value={s.id}>
-                    {s.user.name} ({s.studentId})
+                    {s.user?.name ?? "Student"} ({s.studentId})
                   </option>
                 ))}
               </select>
@@ -97,21 +97,45 @@ export default async function AdminEnrollmentPage() {
 
       <Panel title="Current enrollments">
         <DataTable
-          headers={["Student", "Class", "Enrolled"]}
-          rows={enrollments.map((e) => [
-            `${e.student.user.name} (${e.student.studentId})`,
-            classLabel(e.class.name, e.class.section),
-            e.enrolledAt.toLocaleDateString(),
-          ])}
+          headers={["Student", "Class", "Enrolled", ""]}
+          rows={enrollments
+            .filter((enrollment) => enrollment.endedAt == null)
+            .map((enrollment) => [
+              `${enrollment.student?.user?.name ?? "Student"} (${enrollment.student?.studentId ?? "—"})`,
+              classLabel(enrollment.class?.name ?? "", enrollment.class?.section ?? ""),
+              enrollment.enrolledAt ? formatDate(enrollment.enrolledAt) : "—",
+              <ActionForm key={enrollment.id} action={endEnrollment}>
+                <input type="hidden" name="enrollmentId" value={enrollment.id} />
+                <SubmitButton>End enrollment</SubmitButton>
+              </ActionForm>,
+            ])}
+        />
+      </Panel>
+
+      <Panel title="Enrollment history">
+        <DataTable
+          headers={["Student", "Class", "Ended", ""]}
+          rows={enrollments
+            .filter((enrollment) => enrollment.endedAt != null)
+            .map((enrollment) => [
+              `${enrollment.student?.user?.name ?? "Student"} (${enrollment.student?.studentId ?? "—"})`,
+              classLabel(enrollment.class?.name ?? "", enrollment.class?.section ?? ""),
+              enrollment.endedAt ? formatDate(enrollment.endedAt) : "—",
+              <ActionForm key={enrollment.id} action={enrollStudent}>
+                <input type="hidden" name="studentProfileId" value={enrollment.studentProfileId} />
+                <input type="hidden" name="classId" value={enrollment.classId} />
+                <SubmitButton>Re-enroll</SubmitButton>
+              </ActionForm>,
+            ])}
         />
       </Panel>
 
       <Panel title="Parent–student links">
         <DataTable
           headers={["Parent", "Student"]}
-          rows={links.map((l) => [
-            l.parent.name,
-            `${l.student.user.name} (${l.student.studentId})`,
+          rows={links.map((link) => [
+            link.parent?.name ?? "Parent",
+            `${link.student?.user?.name ?? "Student"} (${link.student?.studentId ?? "—"})`,
           ])}
         />
       </Panel>

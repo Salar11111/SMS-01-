@@ -9,6 +9,16 @@ on:
 jobs:
   ci:
     runs-on: ubuntu-latest
+    services:
+      mongo:
+        image: mongo:7
+        ports:
+          - 27017:27017
+        options: >-
+          --health-cmd "mongosh --eval \"db.runCommand({ ping: 1 })\""
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
     steps:
       - uses: actions/checkout@v4
 
@@ -27,9 +37,27 @@ jobs:
 
       - name: Unit tests
         run: npm test
+        env:
+          MONGO_INTEGRATION: "1"
+          MONGODB_URI: mongodb://127.0.0.1:27017/school-management-ci
 
       - name: Build
         run: npm run build
         env:
           AUTH_SECRET: ci-secret-ci-secret-ci-secret-32
           MONGODB_URI: mongodb://127.0.0.1:27017/school-management-ci
+
+      - name: Seed demo school
+        run: npx tsx src/lib/seed.ts
+        env:
+          AUTH_SECRET: ci-secret-ci-secret-ci-secret-32
+          MONGODB_URI: mongodb://127.0.0.1:27017/school-management
+
+      - name: Install Playwright browser
+        run: npx playwright install --with-deps chromium
+
+      - name: Teacher attendance path
+        run: npx playwright test tests/attendance.spec.ts
+        env:
+          AUTH_SECRET: ci-secret-ci-secret-ci-secret-32
+          MONGODB_URI: mongodb://127.0.0.1:27017/school-management

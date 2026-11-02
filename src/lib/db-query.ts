@@ -1,4 +1,4 @@
-const PARAM_KEYS = new Set(["where", "orderBy", "select", "populate", "include"]);
+const PARAM_KEYS = new Set(["where", "orderBy", "select", "populate", "include", "limit"]);
 
 const RELATIONS = new Set([
   "user",
@@ -22,6 +22,7 @@ export type QueryArgs = {
   orderBy?: unknown;
   select?: unknown;
   populate?: unknown;
+  limit?: number;
 };
 
 export type PopulateSpec = {
@@ -45,6 +46,7 @@ export function unwrapArgs(input: unknown): QueryArgs {
     orderBy: obj.orderBy,
     select: obj.select,
     populate: obj.populate ?? obj.include,
+    limit: typeof obj.limit === "number" ? obj.limit : undefined,
   };
 }
 
@@ -57,6 +59,13 @@ export function normalizeWhere(where: Record<string, unknown> | undefined): Reco
       const inner = value as Record<string, unknown>;
       if ("in" in inner) {
         out[field] = { $in: inner.in };
+        continue;
+      }
+      if ("gte" in inner || "lte" in inner) {
+        const range: Record<string, unknown> = {};
+        if ("gte" in inner) range.$gte = inner.gte;
+        if ("lte" in inner) range.$lte = inner.lte;
+        out[field] = range;
         continue;
       }
     }
@@ -111,6 +120,11 @@ export function buildPopulate(populate: unknown): PopulateSpec[] {
     }
     const spec: PopulateSpec = { path: key };
     if (match) spec.match = match;
+    if (typeof record.select === "string") spec.select = record.select;
+    else if (record.select) {
+      const fields = selectFields(record.select);
+      if (fields) spec.select = fields;
+    }
     if (isFieldSelect(rest)) {
       const fields = selectFields(rest);
       if (fields) spec.select = fields;

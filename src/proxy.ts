@@ -28,9 +28,13 @@ export const config = {
     "/login",
     "/account",
     "/account/:path*",
+    "/admin",
     "/admin/:path*",
+    "/teacher",
     "/teacher/:path*",
+    "/student",
     "/student/:path*",
+    "/parent",
     "/parent/:path*",
   ],
 };

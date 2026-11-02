@@ -29,6 +29,7 @@ export function navFor(role: AppRole): { href: string; label: string }[] {
       { href: "/admin/classes", label: "Classes" },
       { href: "/admin/enrollment", label: "Enrollment" },
       { href: "/admin/reports", label: "Reports" },
+      { href: "/admin/audit", label: "Audit" },
       account,
     ];
   }

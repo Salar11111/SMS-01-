@@ -19,31 +19,43 @@ import {
 } from "lucide-react";
 
 export default async function HomePage() {
-  const session = await auth();
+  let session = null;
+  try {
+    session = await auth();
+  } catch (error) {
+    console.error("Homepage session is unavailable", error);
+  }
   if (session?.user?.id && session.user.role) {
     redirect(ROLE_HOME[session.user.role]);
   }
 
-  const [classes, teachers, students] = await Promise.all([
-    db.class_count(),
-    db.teacherProfile_count(),
-    db.studentProfile_count(),
-  ]);
+  let classes = 0;
+  let teachers = 0;
+  let students = 0;
+  try {
+    [classes, teachers, students] = await Promise.all([
+      db.class_count(),
+      db.teacherProfile_count(),
+      db.studentProfile_count(),
+    ]);
+  } catch (error) {
+    console.error("Homepage counts are unavailable", error);
+  }
 
   return (
     <div className="min-h-screen flex flex-col">
       {/* ── Navigation ── */}
       <header className="sticky top-0 z-40 border-b border-[var(--color-line)] bg-[var(--color-panel)]/95 backdrop-blur-sm">
-        <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4">
-          <Link href="/" className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[var(--color-primary)] shadow-sm">
-              <School className="h-5 w-5 text-white" />
+        <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-3 sm:px-6 sm:py-4">
+          <Link href="/" className="flex min-w-0 items-center gap-3">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[var(--color-primary)] shadow-sm">
+              <School className="h-5 w-5 text-[var(--color-primary-foreground)]" />
             </div>
-            <div>
-              <span className="font-[family-name:var(--font-display)] text-xl font-bold text-[var(--color-ink)]">
+            <div className="min-w-0">
+              <span className="block truncate font-[family-name:var(--font-display)] text-lg font-semibold text-[var(--color-ink)] sm:text-xl">
                 Harbor School
               </span>
-              <span className="block text-[10px] font-semibold uppercase tracking-widest text-[var(--color-slate-muted)]">
+              <span className="hidden text-[10px] font-semibold uppercase tracking-widest text-[var(--color-slate-muted)] sm:block">
                 Management Suite
               </span>
             </div>
@@ -58,28 +70,24 @@ export default async function HomePage() {
             <a href="#journey" className="text-sm font-medium text-[var(--color-slate-muted)] transition-colors hover:text-[var(--color-ink)]">
               How It Works
             </a>
-            <a href="#stories" className="text-sm font-medium text-[var(--color-slate-muted)] transition-colors hover:text-[var(--color-ink)]">
-              Stories
-            </a>
           </nav>
-          <PortalLink href="/login" className="btn-primary">
-            Enter Portal <ArrowRight className="h-4 w-4" />
+          <PortalLink href="/login" className="btn-primary shrink-0 px-4 sm:px-5">
+            <span className="sm:hidden">Portal</span>
+            <span className="hidden sm:inline">Enter Portal</span>
+            <ArrowRight className="h-4 w-4" />
           </PortalLink>
         </div>
       </header>
 
       {/* ── Hero ── */}
       <section className="relative overflow-hidden gradient-hero">
-        <div className="pointer-events-none absolute -left-40 top-0 h-96 w-96 rounded-full bg-[var(--color-sage-light)] blur-3xl opacity-60" />
-        <div className="pointer-events-none absolute -right-40 bottom-0 h-96 w-96 rounded-full bg-[var(--color-terracotta-light)] blur-3xl opacity-40" />
-
-        <div className="relative mx-auto grid max-w-7xl gap-12 px-6 py-20 lg:grid-cols-2 lg:items-center lg:py-28">
+        <div className="relative mx-auto grid max-w-6xl gap-12 px-6 py-20 lg:grid-cols-2 lg:items-center lg:py-28">
           <div className="animate-slide-up">
             <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-[var(--color-line)] bg-[var(--color-panel)] px-4 py-2 text-sm font-medium text-[var(--color-slate-muted)] shadow-sm">
               <Sparkles className="h-4 w-4 text-[var(--color-terracotta)]" />
               Welcome to Harbor School
             </div>
-            <h1 className="font-[family-name:var(--font-display)] text-5xl font-bold leading-tight tracking-tight text-[var(--color-ink)] lg:text-6xl">
+            <h1 className="font-[family-name:var(--font-display)] text-4xl font-semibold leading-[1.05] tracking-tight text-[var(--color-ink)] sm:text-5xl lg:text-6xl">
               Where learning{" "}
               <em className="text-[var(--color-primary)] italic">feels</em>{" "}
               like belonging.
@@ -173,8 +181,8 @@ export default async function HomePage() {
                   <Heart className="h-5 w-5 text-[var(--color-terracotta)] fill-current" />
                 </div>
                 <div>
-                  <p className="text-2xl font-bold text-[var(--color-ink)] font-[family-name:var(--font-display)]">98%</p>
-                  <p className="text-xs text-[var(--color-slate-muted)]">parent satisfaction</p>
+                  <p className="text-lg font-bold text-[var(--color-ink)] font-[family-name:var(--font-display)]">Families</p>
+                  <p className="text-xs text-[var(--color-slate-muted)]">see the same record</p>
                 </div>
               </div>
             </div>
@@ -183,7 +191,7 @@ export default async function HomePage() {
 
         {/* Stats bar */}
         <div className="relative border-t border-[var(--color-line)] bg-[var(--color-panel)]/60 backdrop-blur-sm">
-          <div className="mx-auto grid max-w-7xl grid-cols-3 gap-6 px-6 py-6">
+          <div className="mx-auto grid max-w-6xl grid-cols-3 gap-6 px-6 py-6">
             <div className="text-center">
               <p className="font-[family-name:var(--font-display)] text-3xl font-bold text-[var(--color-ink)]">{classes}</p>
               <p className="text-sm text-[var(--color-slate-muted)]">Classes</p>
@@ -202,7 +210,7 @@ export default async function HomePage() {
 
       {/* ── Features ── */}
       <section id="features" className="py-24 bg-[var(--color-panel)]">
-        <div className="mx-auto max-w-7xl px-6">
+        <div className="mx-auto max-w-6xl px-6">
           <div className="mb-14 max-w-2xl">
             <SectionLabel>What we offer</SectionLabel>
             <h2 className="font-[family-name:var(--font-display)] text-4xl font-bold text-[var(--color-ink)]">
@@ -214,7 +222,7 @@ export default async function HomePage() {
             </p>
           </div>
 
-          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="stagger grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
             {[
               {
                 icon: <GraduationCap className="h-6 w-6" />,
@@ -271,7 +279,7 @@ export default async function HomePage() {
 
       {/* ── Roles ── */}
       <section id="roles" className="py-24 gradient-warm">
-        <div className="mx-auto max-w-7xl px-6">
+        <div className="mx-auto max-w-6xl px-6">
           <div className="mb-14 text-center">
             <SectionLabel>Who it&apos;s for</SectionLabel>
             <h2 className="font-[family-name:var(--font-display)] text-4xl font-bold text-[var(--color-ink)]">
@@ -283,7 +291,7 @@ export default async function HomePage() {
             </p>
           </div>
 
-          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="stagger grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
             {[
               {
                 role: "Admin",
@@ -330,7 +338,7 @@ export default async function HomePage() {
 
       {/* ── How It Works ── */}
       <section id="journey" className="py-24 bg-[var(--color-panel)]">
-        <div className="mx-auto max-w-7xl px-6">
+        <div className="mx-auto max-w-6xl px-6">
           <div className="mb-14 max-w-2xl">
             <SectionLabel>How it works</SectionLabel>
             <h2 className="font-[family-name:var(--font-display)] text-4xl font-bold text-[var(--color-ink)]">
@@ -342,7 +350,7 @@ export default async function HomePage() {
             </p>
           </div>
 
-          <div className="grid gap-8 lg:grid-cols-4">
+          <div className="stagger grid gap-8 lg:grid-cols-4">
             {[
               {
                 step: "1",
@@ -371,7 +379,7 @@ export default async function HomePage() {
             ].map((item, i) => (
               <div key={i} className="relative">
                 <div className="flex items-center gap-3 mb-4">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[var(--color-primary)] text-sm font-bold text-white">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[var(--color-primary)] text-sm font-bold text-[var(--color-primary-foreground)]">
                     {item.step}
                   </div>
                   <div className="h-px flex-1 bg-[var(--color-line)]" />
@@ -392,32 +400,29 @@ export default async function HomePage() {
       {/* ── CTA ── */}
       <section className="py-24">
         <div className="mx-auto max-w-5xl px-6">
-          <div className="relative overflow-hidden rounded-3xl bg-[var(--color-primary)] p-12 text-center text-white shadow-[var(--shadow-xl)]">
-            <div className="pointer-events-none absolute -left-20 -top-20 h-64 w-64 rounded-full bg-white/10 blur-2xl" />
-            <div className="pointer-events-none absolute -bottom-20 -right-20 h-64 w-64 rounded-full bg-white/10 blur-2xl" />
-
+          <div className="relative overflow-hidden rounded-[2rem] bg-[var(--color-primary)] p-12 text-center text-[var(--color-primary-foreground)] shadow-[var(--shadow-xl)]">
             <div className="relative">
-              <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-4 py-2 text-sm font-medium backdrop-blur-sm">
+              <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-current/15 bg-white/10 px-4 py-2 text-sm font-medium">
                 <Sparkles className="h-4 w-4" />
                 Your portal to connected education
               </div>
-              <h2 className="font-[family-name:var(--font-display)] text-4xl font-bold lg:text-5xl">
+              <h2 className="font-[family-name:var(--font-display)] text-4xl font-semibold lg:text-5xl">
                 Ready when you are.
               </h2>
-              <p className="mx-auto mt-4 max-w-xl text-lg text-white/80">
-                Your school&apos;s records, grades, and attendance — gathered in one warm,
-                welcoming place. Step through the portal and feel the difference.
+              <p className="mx-auto mt-4 max-w-xl text-lg opacity-80">
+                Your school&apos;s records, grades, and attendance — gathered in one clear
+                place. Step through the portal and feel the difference.
               </p>
               <div className="mt-8 flex flex-col items-center gap-4 sm:flex-row sm:justify-center">
                 <PortalLink
                   href="/login"
-                  className="inline-flex items-center gap-2 rounded-xl bg-white px-8 py-3.5 text-base font-semibold text-[var(--color-primary)] shadow-lg transition-all hover:shadow-xl hover:-translate-y-0.5"
+                  className="inline-flex items-center gap-2 rounded-full bg-[var(--color-panel)] px-8 py-3.5 text-base font-semibold text-[var(--color-primary)] shadow-lg transition-transform duration-200 ease-[cubic-bezier(0.16,1,0.3,1)] hover:scale-[1.03]"
                 >
                   Enter Portal <ArrowRight className="h-4 w-4" />
                 </PortalLink>
               </div>
-              <p className="mt-8 text-xs font-bold uppercase tracking-[0.2em] text-white/60">
-                Secure · Compliant · Always Available
+              <p className="mt-8 text-xs font-bold uppercase tracking-[0.2em] opacity-70">
+                Secure · Clear · Always available
               </p>
             </div>
           </div>
@@ -426,12 +431,12 @@ export default async function HomePage() {
 
       {/* ── Footer ── */}
       <footer className="border-t border-[var(--color-line)] bg-[var(--color-surface)]">
-        <div className="mx-auto max-w-7xl px-6 py-16">
+        <div className="mx-auto max-w-6xl px-6 py-16">
           <div className="grid gap-12 lg:grid-cols-4">
             <div className="lg:col-span-2">
               <div className="flex items-center gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[var(--color-primary)]">
-                  <School className="h-5 w-5 text-white" />
+                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[var(--color-primary)]">
+                  <School className="h-5 w-5 text-[var(--color-primary-foreground)]" />
                 </div>
                 <div>
                   <span className="font-[family-name:var(--font-display)] text-xl font-bold text-[var(--color-ink)]">

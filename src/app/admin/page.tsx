@@ -9,7 +9,7 @@ export default async function AdminHomePage() {
   const [users, classes, enrollments, attendance, teachers, students] = await Promise.all([
     db.user_count(),
     db.class_count(),
-    db.enrollment_count(),
+    db.enrollment_count({ endedAt: null }),
     db.attendanceRecord_count(),
     db.teacherProfile_count(),
     db.studentProfile_count(),

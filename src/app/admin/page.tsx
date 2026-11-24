@@ -29,14 +29,19 @@ export default async function AdminHomePage() {
         }
       />
 
-      {/* Stats grid */}
-      <div className="mb-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        <Stat label="Total Users" value={users} icon={<Users className="h-5 w-5" />} />
-        <Stat label="Classes" value={classes} icon={<School className="h-5 w-5" />} />
-        <Stat label="Enrollments" value={enrollments} icon={<ClipboardList className="h-5 w-5" />} />
-        <Stat label="Teachers" value={teachers} icon={<Clock className="h-5 w-5" />} />
-        <Stat label="Students" value={students} icon={<CalendarCheck className="h-5 w-5" />} />
-        <Stat label="Attendance Records" value={attendance} icon={<ClipboardList className="h-5 w-5" />} />
+      {/* Bento stats — the school-wide total leads */}
+      <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-12">
+        <Stat
+          label="Total Users"
+          value={users}
+          icon={<Users className="h-5 w-5" />}
+          className="sm:col-span-2 lg:col-span-6"
+        />
+        <Stat label="Classes" value={classes} icon={<School className="h-5 w-5" />} className="lg:col-span-3" />
+        <Stat label="Enrollments" value={enrollments} icon={<ClipboardList className="h-5 w-5" />} className="lg:col-span-3" />
+        <Stat label="Teachers" value={teachers} icon={<Clock className="h-5 w-5" />} className="lg:col-span-4" />
+        <Stat label="Students" value={students} icon={<CalendarCheck className="h-5 w-5" />} className="lg:col-span-4" />
+        <Stat label="Attendance Records" value={attendance} icon={<ClipboardList className="h-5 w-5" />} className="lg:col-span-4" />
       </div>
 
       {/* Quick Actions */}

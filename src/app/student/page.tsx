@@ -65,11 +65,12 @@ export default async function StudentHomePage() {
         description={`Student ID: ${profile.studentId}`}
       />
 
-      <div className="mb-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="mb-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-12">
         <Stat
           label="Enrolled Classes"
           value={profile.enrollments.length}
           icon={<GraduationCap className="h-5 w-5" />}
+          className="sm:col-span-2 lg:col-span-6"
         />
         <Stat
           label="Attendance Rate"
@@ -77,16 +78,19 @@ export default async function StudentHomePage() {
           icon={<CalendarCheck className="h-5 w-5" />}
           trend={profile.attendance.length > 0 ? "up" : "neutral"}
           trendLabel={rate}
+          className="lg:col-span-3"
         />
         <Stat
           label="Grade Entries"
           value={profile.grades.length}
           icon={<ClipboardList className="h-5 w-5" />}
+          className="lg:col-span-3"
         />
         <Stat
           label="Average Score"
           value={avgScore}
           icon={<Award className="h-5 w-5" />}
+          className="sm:col-span-2 lg:col-span-12"
         />
       </div>
 

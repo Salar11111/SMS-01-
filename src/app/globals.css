@@ -62,6 +62,14 @@
   --transition-fast: 120ms var(--ease-out);
   --transition-base: 220ms var(--ease-out);
   --transition-slow: 420ms var(--ease-out);
+
+  /* Shared system — spacing, radii, motion, type, focus */
+  --s-1: 4px; --s-2: 8px; --s-3: 12px; --s-4: 16px; --s-5: 24px;
+  --s-6: 32px; --s-7: 48px; --s-8: 64px; --s-9: 96px;
+  --r-sm: 6px; --r-md: 12px; --r-lg: 20px; --r-btn: 8px;
+  --dur: 160ms; --ease: cubic-bezier(.2, .7, .3, 1);
+  --focus: 2px solid var(--color-primary);
+  --text-label: 13px;
 }
 
 /* ── Dark palette ── */
@@ -130,15 +138,38 @@
 
 html {
   scroll-behavior: smooth;
+  -webkit-text-size-adjust: 100%;
+}
+
+/* Never let a wide table or sidebar create page-level horizontal scroll. */
+html,
+body {
+  overflow-x: hidden;
 }
 
 body {
   background: var(--color-background);
   color: var(--color-foreground);
   font-family: var(--font-ui), system-ui, sans-serif;
+  font-size: 16px;
+  line-height: 1.55;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;
+}
+
+/* One focus treatment for every interactive element. */
+:where(a, button, input, select, textarea, summary, [tabindex]):focus-visible {
+  outline: var(--focus);
+  outline-offset: 2px;
+}
+
+/* Keep linked-card lift to 2px and flat, without changing utility hooks. */
+.card:hover,
+.card-interactive:hover,
+.card-hover:hover {
+  transform: translateY(-2px);
+  box-shadow: none;
 }
 
 /* ── Typography ── */
@@ -148,6 +179,16 @@ h1, h2, h3, h4, h5, h6 {
   line-height: 1.2;
   color: var(--color-ink);
 }
+
+/* Text scale: body 16, small labels 13 — never smaller. */
+.text-xs, .text-\[10px\] { font-size: var(--text-label) !important; }
+.text-sm { font-size: 14px; }
+.text-base { font-size: 16px; }
+.text-lg { font-size: 18px; }
+.text-xl { font-size: 20px; }
+.text-2xl { font-size: 24px; }
+.text-3xl { font-size: clamp(28px, 2.6vw, 34px); }
+.text-4xl { font-size: clamp(32px, 3.4vw, 44px); }
 
 .text-display {
   font-family: var(--font-display), Georgia, serif;
@@ -264,26 +305,26 @@ h1, h2, h3, h4, h5, h6 {
 
 /* ── Component layer ── */
 @layer components {
-  /* Buttons */
+  /* One button recipe: filled primary + quiet secondary. */
   .btn-primary {
-    @apply inline-flex items-center justify-center gap-2 rounded-full px-5 py-2.5 text-sm font-semibold text-[var(--color-primary-foreground)] bg-[var(--color-primary)] transition-all duration-200 hover:bg-[var(--color-sage-hover)] hover:shadow-lg disabled:opacity-50 disabled:hover:shadow-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)];
+    @apply inline-flex min-h-11 items-center justify-center gap-2 rounded-[var(--r-btn)] px-5 py-2.5 text-sm font-semibold text-[var(--color-primary-foreground)] bg-[var(--color-primary)] transition-[background-color,color,border-color,transform] duration-150 ease-[var(--ease)] hover:bg-[var(--color-sage-hover)] hover:-translate-y-0.5 active:translate-y-0 active:scale-[.99] disabled:opacity-50 disabled:pointer-events-none;
   }
   .btn-secondary {
-    @apply inline-flex items-center justify-center gap-2 rounded-full px-5 py-2.5 text-sm font-medium text-[var(--color-primary)] bg-[var(--color-primary-soft)] border border-transparent transition-all duration-200 hover:bg-[var(--color-sage-light)] disabled:opacity-50 focus-visible:ring-2 focus-visible:ring-[var(--color-primary)];
+    @apply inline-flex min-h-11 items-center justify-center gap-2 rounded-[var(--r-btn)] border border-transparent bg-[var(--color-primary-soft)] px-5 py-2.5 text-sm font-semibold text-[var(--color-primary)] transition-[background-color,color,border-color,transform] duration-150 ease-[var(--ease)] hover:border-[var(--color-line-strong)] hover:-translate-y-0.5 active:translate-y-0 active:scale-[.99] disabled:opacity-50;
   }
   .btn-ghost {
-    @apply inline-flex items-center justify-center gap-2 rounded-full px-4 py-2 text-sm font-medium text-[var(--color-slate-muted)] transition-all duration-200 hover:bg-[var(--color-surface)] hover:text-[var(--color-ink)] disabled:opacity-50 focus-visible:ring-2 focus-visible:ring-[var(--color-line)];
+    @apply inline-flex min-h-11 items-center justify-center gap-2 rounded-[var(--r-btn)] px-4 py-2 text-sm font-medium text-[var(--color-slate-muted)] transition-[background-color,color,transform] duration-150 ease-[var(--ease)] hover:bg-[var(--color-surface)] hover:text-[var(--color-ink)] hover:-translate-y-0.5 active:translate-y-0 active:scale-[.99] disabled:opacity-50;
   }
   .btn-danger {
-    @apply inline-flex items-center justify-center gap-2 rounded-full px-5 py-2.5 text-sm font-semibold text-white bg-[var(--color-error)] transition-all duration-200 hover:bg-[var(--color-error)]/90 disabled:opacity-50 focus-visible:ring-2 focus-visible:ring-[var(--color-error)];
+    @apply inline-flex min-h-11 items-center justify-center gap-2 rounded-[var(--r-btn)] px-5 py-2.5 text-sm font-semibold text-white bg-[var(--color-error)] transition-[background-color,transform] duration-150 ease-[var(--ease)] hover:bg-[var(--color-error)]/90 hover:-translate-y-0.5 active:translate-y-0 active:scale-[.99] disabled:opacity-50;
   }
   .btn-outline {
-    @apply inline-flex items-center justify-center gap-2 rounded-full px-5 py-2.5 text-sm font-medium text-[var(--color-slate)] border border-[var(--color-line)] bg-transparent transition-all duration-200 hover:bg-[var(--color-surface)] hover:border-[var(--color-ink)] disabled:opacity-50 focus-visible:ring-2 focus-visible:ring-[var(--color-line)];
+    @apply inline-flex min-h-11 items-center justify-center gap-2 rounded-[var(--r-btn)] border border-[var(--color-line)] bg-transparent px-5 py-2.5 text-sm font-medium text-[var(--color-slate)] transition-[background-color,color,border-color,transform] duration-150 ease-[var(--ease)] hover:bg-[var(--color-surface)] hover:border-[var(--color-ink)] hover:-translate-y-0.5 active:translate-y-0 active:scale-[.99] disabled:opacity-50;
   }
 
   /* Inputs */
   .input-field {
-    @apply w-full rounded-xl border border-[var(--color-line)] bg-[var(--color-panel)] px-4 py-3 text-[var(--color-ink)] placeholder:text-[var(--color-slate-light)] outline-none transition-all duration-200 hover:border-[var(--color-line-strong)] focus:border-[var(--color-primary)] focus:ring-2 focus:ring-[var(--color-primary-soft)] focus:shadow-sm;
+    @apply min-h-11 w-full rounded-[var(--r-btn)] border border-[var(--color-line)] bg-[var(--color-panel)] px-4 py-3 text-[var(--color-ink)] placeholder:text-[var(--color-slate-muted)] outline-none transition-[border-color,box-shadow] duration-150 hover:border-[var(--color-line-strong)] focus:border-[var(--color-primary)] focus:ring-2 focus:ring-[var(--color-primary-soft)];
   }
   .input-error {
     @apply border-[var(--color-error)] focus:border-[var(--color-error)] focus:ring-[var(--color-error-soft)];
@@ -309,20 +350,19 @@ h1, h2, h3, h4, h5, h6 {
   .badge-info { @apply bg-[var(--color-info-soft)] text-[var(--color-info)]; }
   .badge-neutral { @apply bg-[var(--color-surface)] text-[var(--color-slate-muted)] border border-[var(--color-line)]; }
 
-  /* Cards */
+  /* One card recipe: hairline, soft radius, lift only when linked. */
   .card {
-    @apply rounded-2xl border border-[var(--color-line)] bg-[var(--color-panel)] shadow-[var(--shadow-card)] transition-all duration-300;
+    @apply rounded-[var(--r-md)] border border-[var(--color-line)] bg-[var(--color-panel)] transition-[border-color,transform] duration-150 ease-[var(--ease)];
   }
-  .card-hover {
-    @apply hover:shadow-[var(--shadow-card-hover)] hover:-translate-y-1 hover:border-[var(--color-line-strong)];
-  }
+  .card-hover,
   .card-interactive {
-    @apply cursor-pointer hover:shadow-[var(--shadow-card-hover)] hover:-translate-y-1 hover:border-[var(--color-line-strong)];
+    @apply hover:-translate-y-0.5 hover:border-[var(--color-line-strong)];
   }
+  .card-interactive { @apply cursor-pointer; }
 
   /* Panels */
   .panel {
-    @apply rounded-2xl border border-[var(--color-line)] bg-[var(--color-panel)] shadow-[var(--shadow-panel)];
+    @apply rounded-[var(--r-md)] border border-[var(--color-line)] bg-[var(--color-panel)];
   }
   .panel-accent {
     @apply border-t-4 border-[var(--color-primary)];
@@ -350,13 +390,13 @@ h1, h2, h3, h4, h5, h6 {
   .avatar-bg-1 { background: #0f766e; }
   .avatar-bg-2 { background: #b45309; }
   .avatar-bg-3 { background: #0369a1; }
-  .avatar-bg-4 { background: #7c3aed; }
+  .avatar-bg-4 { background: #0369a1; }
   .avatar-bg-5 { background: #be123c; }
   .avatar-bg-6 { background: #44403c; }
 
   /* Stats */
   .stat-card {
-    @apply rounded-2xl border border-[var(--color-line)] bg-[var(--color-panel)] p-6 shadow-[var(--shadow-card)] transition-all duration-300 hover:shadow-[var(--shadow-card-hover)] hover:-translate-y-1;
+    @apply rounded-[var(--r-md)] border border-[var(--color-line)] bg-[var(--color-panel)] p-6 transition-[border-color] duration-150 ease-[var(--ease)] hover:border-[var(--color-line-strong)];
   }
 }
 
@@ -472,6 +512,15 @@ h1, h2, h3, h4, h5, h6 {
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
   }
+  .card-hover:hover,
+  .card-interactive:hover,
+  .btn-primary:hover,
+  .btn-secondary:hover,
+  .btn-ghost:hover,
+  .btn-danger:hover,
+  .btn-outline:hover,
+  .btn-primary:active,
+  .btn-secondary:active { transform: none !important; }
 }
 
 /* ── Scrollbar ── */
@@ -494,6 +543,24 @@ h1, h2, h3, h4, h5, h6 {
 ::selection {
   background: var(--color-primary-soft);
   color: var(--color-primary);
+}
+
+/* ── Responsive ── */
+@media (max-width: 1024px) {
+  .page-rise { padding-left: var(--s-5); padding-right: var(--s-5); }
+}
+
+@media (max-width: 768px) {
+  .card, .stat-card, .panel { border-radius: var(--r-sm); }
+  .stat-card { padding: var(--s-4); }
+}
+
+@media (max-width: 480px) {
+  .page-rise .btn-primary,
+  .page-rise .btn-secondary,
+  .page-rise .btn-danger,
+  .page-rise .btn-outline { width: 100%; }
+  .page-rise { padding-left: var(--s-4); padding-right: var(--s-4); }
 }
 
 /* ── Print ── */

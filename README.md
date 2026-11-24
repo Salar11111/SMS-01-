@@ -39,6 +39,12 @@ The boring parts are done properly: Zod validation on every Server Action, secur
 
 ---
 
+## 📸 Screenshots
+
+![Harbor School Management admin dashboard](docs/screenshots/dashboard.jpg)
+
+---
+
 ## 🚀 Quick start
 
 ```bash

@@ -8,6 +8,7 @@ export const User = defineModel(
     name: { type: String, required: true },
     role: { type: String, required: true },
     active: { type: Boolean, default: true },
+    authVersion: { type: Number, default: 0 },
   },
   {
     virtuals: [

@@ -7,6 +7,7 @@ export type UserRecord = {
   name: string;
   role: string;
   active: boolean;
+  authVersion?: number;
   passwordHash?: string;
   studentProfile?: StudentRecord | null;
   teacherProfile?: TeacherRecord | null;

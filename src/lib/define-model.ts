@@ -25,6 +25,7 @@ export interface SchoolDocument {
   name?: string;
   role?: string;
   active?: boolean;
+  authVersion?: number;
   isActive?: boolean;
   startDate?: Date | null;
   endDate?: Date | null;

@@ -18,7 +18,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useTheme } from "next-themes";
 import { formatRole, type AppRole } from "@/lib/rbac";
-import { signOutAction } from "@/lib/actions";
+import { signOut } from "next-auth/react";
 
 function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -688,11 +688,17 @@ export function DashboardShell({
               <Moon className="theme-moon h-4 w-4" />
             </button>
           </div>
-          <form action={signOutAction}>
-            <Button variant="secondary" size="sm" type="submit" className="w-full">
-              Sign out
-            </Button>
-          </form>
+          {/* A hard navigation cancels in-flight RSC prefetches. Otherwise a
+              prefetch response can re-set the JWT cookie after sign-out cleared it. */}
+          <Button
+            variant="secondary"
+            size="sm"
+            type="button"
+            className="w-full"
+            onClick={() => void signOut({ callbackUrl: "/login" })}
+          >
+            Sign out
+          </Button>
         </div>
       </aside>
 

@@ -8,7 +8,6 @@ import {
   requireRole,
   requireTeacherProfile,
   requireUser,
-  signOut,
 } from "@/lib/auth";
 import { db } from "@/lib/prisma";
 import { startOfDay } from "@/lib/utils";
@@ -596,6 +595,3 @@ export async function saveGrades(_prev: ActionState, formData: FormData): Promis
   }
 }
 
-export async function signOutAction() {
-  await signOut({ redirectTo: "/login" });
-}

@@ -29,6 +29,7 @@ declare module "@auth/core/jwt" {
     id: string;
     role: AppRole;
     invalid?: boolean;
+    authVersion?: number;
   }
 }
 
@@ -42,11 +43,18 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         token.role = (user as { role: AppRole }).role;
         token.name = user.name;
         token.email = user.email;
+        token.authVersion = (user as { authVersion?: number }).authVersion ?? 0;
       }
       if (!token.id) return token;
 
       const dbUser = await db.user_findUnique({ id: token.id });
       if (!dbUser || dbUser.active === false) {
+        token.invalid = true;
+        return token;
+      }
+      // Sign-out bumps authVersion in Mongo. A response still in flight when the
+      // cookie was cleared can restore the old JWT; reject it on the next request.
+      if ((token.authVersion ?? 0) !== (dbUser.authVersion ?? 0)) {
         token.invalid = true;
         return token;
       }
@@ -104,6 +112,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
             email: user.email,
             name: user.name,
             role: user.role as AppRole,
+            authVersion: user.authVersion ?? 0,
           };
         } catch (error) {
           if (error instanceof CredentialsSignin) throw error;
@@ -113,6 +122,17 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       },
     }),
   ],
+  events: {
+    async signOut(payload) {
+      const id = ("token" in payload ? payload.token?.id : undefined) as string | undefined;
+      if (!id) return;
+      try {
+        await db.user_update({ id }, { $inc: { authVersion: 1 } });
+      } catch (error) {
+        console.error("Could not revoke session", error);
+      }
+    },
+  },
 });
 
 const MAX_ATTEMPTS = 5;
